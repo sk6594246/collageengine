@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { deleteProject, listProjects, loadProject, saveProject, uid } from './lib/storage'
 import { qualityLabel, getAspectRatio, buildLayout } from './lib/layouts'
+import { beginCellDrag } from './lib/dragSwap'
 
 const MAX_PHOTOS = 30
 
@@ -121,48 +122,7 @@ export default function App() {
   }
 
   const onCellPointerDown = (e, cell) => {
-    if (e.button !== 0) return
-    e.preventDefault(); e.stopPropagation()
-    setSelectedId(cell.id)
-    const isPan = panMode || e.shiftKey
-    dragRef.current = { id: cell.id, type: isPan ? 'pan' : 'drag', startX: e.clientX, startY: e.clientY, origX: cell.x, origY: cell.y, origOx: cell.ox || 0, origOy: cell.oy || 0, lastX: e.clientX, lastY: e.clientY }
-    const onMove = (ev) => {
-      const d = dragRef.current
-      if (!d) return
-      d.lastX = ev.clientX; d.lastY = ev.clientY
-      const dx = ev.clientX - d.startX, dy = ev.clientY - d.startY
-      if (d.type === 'pan') setCells((prev) => prev.map((c) => c.id === d.id ? { ...c, ox: d.origOx + dx, oy: d.origOy + dy } : c))
-      else setCells((prev) => prev.map((c) => c.id === d.id ? { ...c, x: Math.max(0, d.origX + dx), y: Math.max(0, d.origY + dy) } : c))
-    }
-    const onUp = (ev) => {
-      const d = dragRef.current
-      dragRef.current = null
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      if (!d) return
-      if (d.type === 'pan') {
-        setCells((prev) => { const c = prev.find((x) => x.id === d.id); if (c) cropMemory.current.set(c.photoId, { scale: c.scale || 1, ox: c.ox || 0, oy: c.oy || 0 }); return prev })
-        return
-      }
-      const el = document.elementFromPoint(ev.clientX ?? d.lastX, ev.clientY ?? d.lastY)
-      const targetId = el?.closest?.('.cell')?.getAttribute?.('data-id')
-      if (targetId && targetId !== d.id) {
-        setCells((prev) => {
-          const source = prev.find((c) => c.id === d.id)
-          const target = prev.find((c) => c.id === targetId)
-          if (!source || !target) return prev
-          const take = (c) => ({ photoId: c.photoId, scale: c.scale || 1, ox: c.ox || 0, oy: c.oy || 0, rotate: c.rotate || 0, caption: c.caption || '', showCaption: !!c.showCaption, captionFont: c.captionFont || 'sans', captionSize: c.captionSize || 'md', captionBg: c.captionBg || 'gradient' })
-          const s = take(source), t = take(target)
-          return prev.map((c) => {
-            if (c.id === d.id) return { ...c, x: d.origX, y: d.origY, ...t }
-            if (c.id === targetId) return { ...c, ...s }
-            return c
-          })
-        })
-      }
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
+    beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef })
   }
 
   const exportPNG = () => {
@@ -315,7 +275,7 @@ export default function App() {
           <div className="row-btns">
             <button type="button" className="secondary" onClick={clearAll}>Start over</button>
           </div>
-          <p className="hint">Full vanilla engine: <a href="./engine.html" style={{ color: 'var(--accent)' }}>engine.html</a></p>
+          <p className="hint">Drag photo A onto photo B to <strong>swap</strong>. Full engine: <a href="./engine.html" style={{ color: 'var(--accent)' }}>engine.html</a></p>
         </aside>
         <div className="workspace">
           <div className="canvas-wrap" ref={wrapRef}>
@@ -329,7 +289,7 @@ export default function App() {
                     style={{ left: cell.x, top: cell.y, width: cell.w, height: cell.h, borderRadius: cellRadius, transform: cell.rotate ? `rotate(${cell.rotate}deg)` : undefined }}
                     onClick={(e) => { e.stopPropagation(); setSelectedId(cell.id) }}
                     onPointerDown={(e) => onCellPointerDown(e, cell)}>
-                    <img src={photo.url} alt={photo.name} style={{ transform: `translate(${cell.ox || 0}px, ${cell.oy || 0}px) scale(${cell.scale || 1})`, transformOrigin: 'center center' }} />
+                    <img src={photo.url} alt={photo.name} draggable={false} style={{ transform: `translate(${cell.ox || 0}px, ${cell.oy || 0}px) scale(${cell.scale || 1})`, transformOrigin: 'center center', pointerEvents: 'none' }} />
                     {cell.showCaption && cell.caption && (<div className={`cell-caption bg-${cell.captionBg || 'gradient'} size-${cell.captionSize || 'md'}`}>{cell.caption}</div>)}
                   </div>
                 )
