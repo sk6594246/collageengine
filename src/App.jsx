@@ -28,15 +28,14 @@ export default function App() {
   const [stageW, setStageW] = useState(640)
   const [stageH, setStageH] = useState(640)
   const [status, setStatus] = useState('')
+  const [panMode, setPanMode] = useState(false)
   const wrapRef = useRef(null)
   const fileRef = useRef(null)
   const dragRef = useRef(null)
+  const cropMemory = useRef(new Map())
 
   const selected = useMemo(() => cells.find((c) => c.id === selectedId) || null, [cells, selectedId])
-  const selectedPhoto = useMemo(
-    () => (selected ? photos.find((p) => p.id === selected.photoId) : null),
-    [selected, photos],
-  )
+  const selectedPhoto = useMemo(() => (selected ? photos.find((p) => p.id === selected.photoId) : null), [selected, photos])
 
   const computeStage = useCallback(() => {
     const ratio = getAspectRatio(aspect, customW, customH)
@@ -44,46 +43,32 @@ export default function App() {
     const availW = Math.max(200, (wrap ? wrap.clientWidth : 800) - 32)
     const availH = Math.max(200, (wrap ? wrap.clientHeight : 600) - 32)
     let w, h
-    if (availW / availH > ratio) {
-      h = Math.floor(availH)
-      w = Math.floor(h * ratio)
-    } else {
-      w = Math.floor(availW)
-      h = Math.floor(w / ratio)
-    }
-    w = Math.max(200, w)
-    h = Math.max(200, h)
-    setStageW(w)
-    setStageH(h)
+    if (availW / availH > ratio) { h = Math.floor(availH); w = Math.floor(h * ratio) }
+    else { w = Math.floor(availW); h = Math.floor(w / ratio) }
+    w = Math.max(200, w); h = Math.max(200, h)
+    setStageW(w); setStageH(h)
     return { w, h }
   }, [aspect, customW, customH])
 
   const rebuild = useCallback((photoList = photos, type = layoutType) => {
     const { w, h } = computeStage()
-    if (!photoList.length) {
-      setCells([])
-      return
-    }
+    if (!photoList.length) { setCells([]); return }
     const prevByPhoto = {}
     cells.forEach((c) => {
       prevByPhoto[c.photoId] = {
-        caption: c.caption, showCaption: c.showCaption,
-        captionFont: c.captionFont, captionSize: c.captionSize, captionBg: c.captionBg,
-        scale: c.scale, ox: c.ox, oy: c.oy,
+        caption: c.caption, showCaption: c.showCaption, captionFont: c.captionFont,
+        captionSize: c.captionSize, captionBg: c.captionBg, scale: c.scale, ox: c.ox, oy: c.oy, rotate: c.rotate,
       }
     })
     const enriched = photoList.map((p) => ({ ...p, ...(prevByPhoto[p.id] || {}) }))
-    const next = buildLayout(type, enriched, w, h, margin, gap, smartSize)
+    const next = buildLayout(type, enriched, w, h, margin, gap, smartSize, type === 'freeform' ? cells : null)
     next.forEach((c) => {
       const prev = prevByPhoto[c.photoId]
-      if (prev) {
-        Object.assign(c, {
-          scale: prev.scale || 1, ox: prev.ox || 0, oy: prev.oy || 0,
-          caption: prev.caption || '', showCaption: !!prev.showCaption,
-          captionFont: prev.captionFont || 'sans', captionSize: prev.captionSize || 'md',
-          captionBg: prev.captionBg || 'gradient',
-        })
-      }
+      if (prev) Object.assign(c, {
+        scale: prev.scale || 1, ox: prev.ox || 0, oy: prev.oy || 0, rotate: prev.rotate || 0,
+        caption: prev.caption || '', showCaption: !!prev.showCaption,
+        captionFont: prev.captionFont || 'sans', captionSize: prev.captionSize || 'md', captionBg: prev.captionBg || 'gradient',
+      })
     })
     setCells(next)
   }, [photos, layoutType, margin, gap, smartSize, computeStage, cells])
@@ -95,14 +80,8 @@ export default function App() {
     return () => window.removeEventListener('resize', onResize)
   }, [computeStage])
 
-  useEffect(() => {
-    rebuild()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aspect, customW, customH, layoutType, gap, margin, smartSize, photos.length])
-
-  useEffect(() => {
-    listProjects().then(setProjects).catch(() => {})
-  }, [])
+  useEffect(() => { rebuild() /* eslint-disable-next-line */ }, [aspect, customW, customH, layoutType, gap, margin, smartSize, photos.length])
+  useEffect(() => { listProjects().then(setProjects).catch(() => {}) }, [])
 
   const loadFiles = (fileList) => {
     const remaining = MAX_PHOTOS - photos.length
@@ -115,29 +94,17 @@ export default function App() {
       const url = URL.createObjectURL(file)
       const img = new Image()
       img.onload = () => {
-        next.push({
-          id: uid(), url, img,
-          w: img.naturalWidth, h: img.naturalHeight,
-          pixels: img.naturalWidth * img.naturalHeight, name: file.name,
-        })
+        next.push({ id: uid(), url, img, w: img.naturalWidth, h: img.naturalHeight, pixels: img.naturalWidth * img.naturalHeight, name: file.name })
         loaded++
         if (loaded === files.length) setPhotos((prev) => [...prev, ...next])
       }
-      img.onerror = () => {
-        URL.revokeObjectURL(url)
-        loaded++
-        if (loaded === files.length && next.length) setPhotos((prev) => [...prev, ...next])
-      }
+      img.onerror = () => { URL.revokeObjectURL(url); loaded++; if (loaded === files.length && next.length) setPhotos((prev) => [...prev, ...next]) }
       img.src = url
     })
   }
 
   const removePhoto = (id) => {
-    setPhotos((prev) => {
-      const p = prev.find((x) => x.id === id)
-      if (p?.url) URL.revokeObjectURL(p.url)
-      return prev.filter((x) => x.id !== id)
-    })
+    setPhotos((prev) => { const p = prev.find((x) => x.id === id); if (p?.url) URL.revokeObjectURL(p.url); return prev.filter((x) => x.id !== id) })
     setCells((prev) => prev.filter((c) => c.photoId !== id))
     if (selected?.photoId === id) setSelectedId(null)
   }
@@ -145,9 +112,7 @@ export default function App() {
   const clearAll = () => {
     if (!photos.length || !confirm('Remove all photos?')) return
     photos.forEach((p) => p.url && URL.revokeObjectURL(p.url))
-    setPhotos([])
-    setCells([])
-    setSelectedId(null)
+    setPhotos([]); setCells([]); setSelectedId(null)
   }
 
   const updateSelected = (patch) => {
@@ -155,30 +120,19 @@ export default function App() {
     setCells((prev) => prev.map((c) => (c.id === selectedId ? { ...c, ...patch } : c)))
   }
 
-  // Drag frame — drop on another cell to SWAP photos
   const onCellPointerDown = (e, cell) => {
     if (e.button !== 0) return
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     setSelectedId(cell.id)
-    dragRef.current = {
-      id: cell.id,
-      startX: e.clientX, startY: e.clientY,
-      origX: cell.x, origY: cell.y,
-      lastX: e.clientX, lastY: e.clientY,
-    }
+    const isPan = panMode || e.shiftKey
+    dragRef.current = { id: cell.id, type: isPan ? 'pan' : 'drag', startX: e.clientX, startY: e.clientY, origX: cell.x, origY: cell.y, origOx: cell.ox || 0, origOy: cell.oy || 0, lastX: e.clientX, lastY: e.clientY }
     const onMove = (ev) => {
       const d = dragRef.current
       if (!d) return
-      d.lastX = ev.clientX
-      d.lastY = ev.clientY
-      const dx = ev.clientX - d.startX
-      const dy = ev.clientY - d.startY
-      setCells((prev) =>
-        prev.map((c) =>
-          c.id === d.id ? { ...c, x: Math.max(0, d.origX + dx), y: Math.max(0, d.origY + dy) } : c,
-        ),
-      )
+      d.lastX = ev.clientX; d.lastY = ev.clientY
+      const dx = ev.clientX - d.startX, dy = ev.clientY - d.startY
+      if (d.type === 'pan') setCells((prev) => prev.map((c) => c.id === d.id ? { ...c, ox: d.origOx + dx, oy: d.origOy + dy } : c))
+      else setCells((prev) => prev.map((c) => c.id === d.id ? { ...c, x: Math.max(0, d.origX + dx), y: Math.max(0, d.origY + dy) } : c))
     }
     const onUp = (ev) => {
       const d = dragRef.current
@@ -186,30 +140,25 @@ export default function App() {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       if (!d) return
-      const x = ev.clientX ?? d.lastX
-      const y = ev.clientY ?? d.lastY
-      const el = document.elementFromPoint(x, y)
+      if (d.type === 'pan') {
+        setCells((prev) => { const c = prev.find((x) => x.id === d.id); if (c) cropMemory.current.set(c.photoId, { scale: c.scale || 1, ox: c.ox || 0, oy: c.oy || 0 }); return prev })
+        return
+      }
+      const el = document.elementFromPoint(ev.clientX ?? d.lastX, ev.clientY ?? d.lastY)
       const targetId = el?.closest?.('.cell')?.getAttribute?.('data-id')
       if (targetId && targetId !== d.id) {
         setCells((prev) => {
           const source = prev.find((c) => c.id === d.id)
           const target = prev.find((c) => c.id === targetId)
           if (!source || !target) return prev
-          const take = (c) => ({
-            photoId: c.photoId, scale: c.scale || 1, ox: c.ox || 0, oy: c.oy || 0,
-            caption: c.caption || '', showCaption: !!c.showCaption,
-            captionFont: c.captionFont || 'sans', captionSize: c.captionSize || 'md',
-            captionBg: c.captionBg || 'gradient',
-          })
-          const s = take(source)
-          const t = take(target)
+          const take = (c) => ({ photoId: c.photoId, scale: c.scale || 1, ox: c.ox || 0, oy: c.oy || 0, rotate: c.rotate || 0, caption: c.caption || '', showCaption: !!c.showCaption, captionFont: c.captionFont || 'sans', captionSize: c.captionSize || 'md', captionBg: c.captionBg || 'gradient' })
+          const s = take(source), t = take(target)
           return prev.map((c) => {
             if (c.id === d.id) return { ...c, x: d.origX, y: d.origY, ...t }
             if (c.id === targetId) return { ...c, ...s }
             return c
           })
         })
-        setSelectedId(d.id)
       }
     }
     window.addEventListener('pointermove', onMove)
@@ -220,8 +169,7 @@ export default function App() {
     if (!photos.length) return
     const scale = 3
     const canvas = document.createElement('canvas')
-    canvas.width = stageW * scale
-    canvas.height = stageH * scale
+    canvas.width = stageW * scale; canvas.height = stageH * scale
     const ctx = canvas.getContext('2d')
     ctx.fillStyle = bgColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -229,27 +177,20 @@ export default function App() {
       const photo = photos.find((p) => p.id === cell.photoId)
       if (!photo?.img) return
       ctx.save()
-      const cx = (cell.x + cell.w / 2) * scale
-      const cy = (cell.y + cell.h / 2) * scale
-      ctx.translate(cx, cy)
-      const rw = cell.w * scale
-      const rh = cell.h * scale
-      const r = cellRadius * scale
+      ctx.translate((cell.x + cell.w / 2) * scale, (cell.y + cell.h / 2) * scale)
+      if (cell.rotate) ctx.rotate((cell.rotate * Math.PI) / 180)
+      const rw = cell.w * scale, rh = cell.h * scale, r = cellRadius * scale
       ctx.beginPath()
       ctx.moveTo(-rw / 2 + r, -rh / 2)
       ctx.arcTo(rw / 2, -rh / 2, rw / 2, rh / 2, r)
       ctx.arcTo(rw / 2, rh / 2, -rw / 2, rh / 2, r)
       ctx.arcTo(-rw / 2, rh / 2, -rw / 2, -rh / 2, r)
       ctx.arcTo(-rw / 2, -rh / 2, rw / 2, -rh / 2, r)
-      ctx.closePath()
-      ctx.clip()
-      const imgRatio = photo.w / photo.h
-      const cellRatio = rw / rh
+      ctx.closePath(); ctx.clip()
+      const imgRatio = photo.w / photo.h, cellRatio = rw / rh
       let dw, dh
-      if (imgRatio > cellRatio) { dh = rh; dw = dh * imgRatio }
-      else { dw = rw; dh = dw / imgRatio }
-      const sc = cell.scale || 1
-      dw *= sc; dh *= sc
+      if (imgRatio > cellRatio) { dh = rh; dw = dh * imgRatio } else { dw = rw; dh = dw / imgRatio }
+      const sc = cell.scale || 1; dw *= sc; dh *= sc
       ctx.drawImage(photo.img, -rw / 2 + (rw - dw) / 2 + (cell.ox || 0) * scale, -rh / 2 + (rh - dh) / 2 + (cell.oy || 0) * scale, dw, dh)
       if (cell.showCaption && cell.caption) {
         ctx.fillStyle = 'rgba(0,0,0,0.7)'
@@ -261,34 +202,42 @@ export default function App() {
       }
       ctx.restore()
     })
-    if (showCaption && caption) {
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'
-      ctx.fillRect(0, canvas.height - 60 * scale, canvas.width, 60 * scale)
-      ctx.fillStyle = '#fff'
-      ctx.font = `600 ${18 * scale}px system-ui, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.fillText(caption, canvas.width / 2, canvas.height - 22 * scale)
-    }
     const link = document.createElement('a')
     link.download = `${projectName || 'family-collage'}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
   }
 
+  const replaceSelected = () => {
+    if (!selected) return
+    const input = document.createElement('input')
+    input.type = 'file'; input.accept = 'image/*'
+    input.onchange = () => {
+      const file = input.files && input.files[0]
+      if (!file) return
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => {
+        setPhotos((prev) => prev.map((p) => {
+          if (p.id !== selected.photoId) return p
+          if (p.url && p.url.startsWith('blob:')) URL.revokeObjectURL(p.url)
+          return { ...p, url, img, w: img.naturalWidth, h: img.naturalHeight, pixels: img.naturalWidth * img.naturalHeight, name: file.name }
+        }))
+      }
+      img.src = url
+    }
+    input.click()
+  }
+
   return (
     <div className={`app ${theme === 'none' ? '' : `theme-${theme}`}`}>
       <header className="app-header">
-        <h1>
-          <span className="logo">🖼️</span>
-          Family <span className="brand">Frame</span>
-          <span className="tagline">for us</span>
-        </h1>
+        <h1><span className="logo">🖼️</span> Family <span className="brand">Frame</span> <span className="tagline">for us</span></h1>
         <div className="header-actions">
-          <button type="button" className="secondary" onClick={() => setView(view === 'projects' ? 'studio' : 'projects')}>
-            {view === 'projects' ? '← Studio' : 'Projects'}
-          </button>
+          <button type="button" className="secondary" onClick={() => setView(view === 'projects' ? 'studio' : 'projects')}>{view === 'projects' ? '← Studio' : 'Projects'}</button>
           <button type="button" className="secondary" onClick={() => rebuild()} disabled={!photos.length}>↻ Surprise me</button>
           <button type="button" onClick={exportPNG} disabled={!photos.length}>⬇ Save PNG</button>
+          <button type="button" className="secondary" onClick={() => window.print()} disabled={!photos.length}>🖨 Print</button>
         </div>
       </header>
       <div className="main">
@@ -317,12 +266,16 @@ export default function App() {
             <div className="control-group">
               <div className="section-title">Selected photo</div>
               <div className="selected-actions">
-                <button type="button" className="secondary" onClick={() => updateSelected({ scale: Math.min(5, (selected.scale || 1) + 0.15) })}>＋ Zoom</button>
-                <button type="button" className="secondary" onClick={() => updateSelected({ scale: Math.max(0.5, (selected.scale || 1) - 0.15) })}>－ Zoom</button>
+                <button type="button" className={`secondary ${panMode ? 'on' : ''}`} onClick={() => setPanMode((v) => !v)}>{panMode ? 'Moving photo…' : 'Move photo'}</button>
+                <button type="button" className="secondary" onClick={() => updateSelected({ rotate: ((selected.rotate || 0) + 90) % 360 })}>Rotate</button>
+                <button type="button" className="secondary" onClick={() => { cropMemory.current.set(selected.photoId, { scale: selected.scale || 1, ox: selected.ox || 0, oy: selected.oy || 0 }); updateSelected({ scale: Math.min(5, (selected.scale || 1) + 0.15) }) }}>＋ Zoom</button>
+                <button type="button" className="secondary" onClick={() => { cropMemory.current.set(selected.photoId, { scale: selected.scale || 1, ox: selected.ox || 0, oy: selected.oy || 0 }); updateSelected({ scale: Math.max(0.5, (selected.scale || 1) - 0.15) }) }}>－ Zoom</button>
+                <button type="button" className="secondary" onClick={() => { const mem = cropMemory.current.get(selected.photoId); if (mem) updateSelected(mem) }}>Restore crop</button>
                 <button type="button" className="secondary" onClick={() => updateSelected({ scale: 1, ox: 0, oy: 0 })}>Reset view</button>
+                <button type="button" className="secondary" onClick={replaceSelected}>Replace</button>
                 <button type="button" className="secondary danger" onClick={() => selectedPhoto && removePhoto(selectedPhoto.id)}>Remove</button>
               </div>
-              <p className="hint">Drag this photo onto another to <strong>swap</strong> them.</p>
+              <p className="hint">Drag onto another photo to <strong>swap</strong>. Shift+drag or Move photo = pan.</p>
               <input type="text" value={selected.caption || ''} placeholder="Caption" onChange={(e) => updateSelected({ caption: e.target.value })} />
               <div className="toggle-row">
                 <label>Show on photo</label>
@@ -334,8 +287,12 @@ export default function App() {
             <div className="section-title">Arrangement</div>
             <select value={layoutType} onChange={(e) => setLayoutType(e.target.value)}>
               <option value="collage">Collage grid</option>
+              <option value="mosaic">Mosaic (mixed sizes)</option>
               <option value="grid">Equal grid</option>
-              <option value="masonry">Masonry</option>
+              <option value="masonry">Masonry columns</option>
+              <option value="polaroid">Polaroid stack</option>
+              <option value="radial">Family tree (radial)</option>
+              <option value="freeform">Freeform (manual)</option>
             </select>
           </div>
           <div className="control-group">
@@ -345,39 +302,35 @@ export default function App() {
               <option value="4:5">4 : 5</option>
               <option value="3:2">3 : 2</option>
               <option value="16:9">16 : 9</option>
+              <option value="A4P">A4 Portrait</option>
+              <option value="A4L">A4 Landscape</option>
             </select>
+          </div>
+          <div className="control-group">
+            <div className="toggle-row">
+              <label>Smart size matching</label>
+              <div className={`toggle ${smartSize ? 'on' : ''}`} onClick={() => setSmartSize((v) => !v)} role="switch" />
+            </div>
           </div>
           <div className="row-btns">
             <button type="button" className="secondary" onClick={clearAll}>Start over</button>
           </div>
-          <p className="hint">Drag a photo onto another to <strong>swap</strong>.</p>
+          <p className="hint">Full vanilla engine: <a href="./engine.html" style={{ color: 'var(--accent)' }}>engine.html</a></p>
         </aside>
         <div className="workspace">
           <div className="canvas-wrap" ref={wrapRef}>
             <div className="stage" style={{ width: stageW, height: stageH, background: bgColor }} onClick={() => setSelectedId(null)}>
-              {!photos.length && (
-                <div className="empty">
-                  <div className="icon">📷</div>
-                  <h3>Start your family collage</h3>
-                  <p>Drop photos or use the panel.</p>
-                </div>
-              )}
+              {!photos.length && (<div className="empty"><div className="icon">📷</div><h3>Start your family collage</h3><p>Drop photos or use the panel.</p></div>)}
               {cells.map((cell) => {
                 const photo = photos.find((p) => p.id === cell.photoId)
                 if (!photo) return null
                 return (
-                  <div
-                    key={cell.id}
-                    className={`cell ${cell.id === selectedId ? 'selected' : ''}`}
-                    data-id={cell.id}
-                    style={{ left: cell.x, top: cell.y, width: cell.w, height: cell.h, borderRadius: cellRadius }}
+                  <div key={cell.id} className={`cell ${cell.id === selectedId ? 'selected' : ''}`} data-id={cell.id}
+                    style={{ left: cell.x, top: cell.y, width: cell.w, height: cell.h, borderRadius: cellRadius, transform: cell.rotate ? `rotate(${cell.rotate}deg)` : undefined }}
                     onClick={(e) => { e.stopPropagation(); setSelectedId(cell.id) }}
-                    onPointerDown={(e) => onCellPointerDown(e, cell)}
-                  >
+                    onPointerDown={(e) => onCellPointerDown(e, cell)}>
                     <img src={photo.url} alt={photo.name} style={{ transform: `translate(${cell.ox || 0}px, ${cell.oy || 0}px) scale(${cell.scale || 1})`, transformOrigin: 'center center' }} />
-                    {cell.showCaption && cell.caption && (
-                      <div className={`cell-caption bg-${cell.captionBg || 'gradient'} size-${cell.captionSize || 'md'}`}>{cell.caption}</div>
-                    )}
+                    {cell.showCaption && cell.caption && (<div className={`cell-caption bg-${cell.captionBg || 'gradient'} size-${cell.captionSize || 'md'}`}>{cell.caption}</div>)}
                   </div>
                 )
               })}
