@@ -3,7 +3,7 @@ import './App.css'
 import { deleteProject, listProjects, loadProject, saveProject, uid } from './lib/storage'
 import { qualityLabel, getAspectRatio, buildLayout } from './lib/layouts'
 import { beginCellDrag } from './lib/dragSwap'
-import { applyCropMemory, cropFromCell, preserveCropOnResize, saveCropToMemory, scaleCellsOnStage } from './lib/crop'
+import { applyCropMemory, cropFromCell, saveCropToMemory } from './lib/crop'
 
 const MAX_PHOTOS = 30
 
@@ -83,12 +83,9 @@ export default function App() {
       cropMemory.current.set(c.photoId, crop)
     })
     const enriched = photoList.map((p) => ({ ...p, ...(prevByPhoto[p.id] || {}) }))
-    let next = buildLayout(type, enriched, w, h, margin, gap, smartSize)
-
-    const factor = Math.max(0.4, Math.min(1, (scalePct || 100) / 100))
-    if (factor < 0.999) {
-      next = scaleCellsOnStage(next, w, h, factor)
-    }
+    // Lower density = denser re-layout (more photos on same canvas), not empty border
+    const density = Math.max(0.4, Math.min(1, (scalePct || 100) / 100))
+    let next = buildLayout(type, enriched, w, h, margin, gap, smartSize, null, density)
 
     next = next.map((c) => {
       const prev = prevByPhoto[c.photoId]
@@ -193,9 +190,7 @@ export default function App() {
     )
   }
 
-  const onUniversalScale = (pct) => {
-    setLayoutScalePct(pct)
-  }
+  const onUniversalScale = (pct) => setLayoutScalePct(pct)
 
   const onCellPointerDown = (e, cell) => {
     beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef })
@@ -263,14 +258,6 @@ export default function App() {
       }
       ctx.restore()
     })
-    if (showCaption && caption) {
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'
-      ctx.fillRect(0, canvas.height - 60 * scale, canvas.width, 60 * scale)
-      ctx.fillStyle = '#fff'
-      ctx.font = `600 ${18 * scale}px system-ui, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.fillText(caption, canvas.width / 2, canvas.height - 22 * scale)
-    }
     const link = document.createElement('a')
     link.download = `${projectName || 'family-collage'}.png`
     link.href = canvas.toDataURL('image/png')
@@ -353,7 +340,7 @@ export default function App() {
                 <button type="button" className="secondary" onClick={replaceSelected}>Replace</button>
                 <button type="button" className="secondary danger" onClick={() => selectedPhoto && removePhoto(selectedPhoto.id)}>Remove</button>
               </div>
-              <p className="hint">Drag onto another photo to <strong>swap</strong>. Shift+drag or Move photo = pan.</p>
+              <p className="hint">Drag onto another to <strong>swap</strong>. Move photo / wheel = crop. Restore crop keeps faces after layout change.</p>
               <input type="text" value={selected.caption || ''} placeholder="Caption" onChange={(e) => updateSelected({ caption: e.target.value })} />
               <div className="toggle-row">
                 <label>Show on photo</label>
@@ -391,20 +378,19 @@ export default function App() {
             </div>
           </div>
           <div className="control-group">
-            <div className="section-title">Universal scale</div>
-            <label>All photos size <span>{layoutScalePct}%</span></label>
+            <div className="section-title">Photo density</div>
+            <label>How many fit <span>{layoutScalePct}%</span></label>
             <input type="range" min={50} max={100} step={5} value={layoutScalePct} onChange={(e) => onUniversalScale(+e.target.value)} />
-            <p className="hint">Slide down to shrink every frame so more photos fit. Crop stays locked to each frame.</p>
+            <p className="hint">Lower = smaller frames + re-shuffle so more photos fit the same canvas (not an empty border).</p>
             <div className="selected-actions" style={{ marginTop: 6 }}>
-              <button type="button" className="secondary" onClick={() => onUniversalScale(60)}>Compact 60%</button>
+              <button type="button" className="secondary" onClick={() => onUniversalScale(55)}>More photos 55%</button>
               <button type="button" className="secondary" onClick={() => onUniversalScale(75)}>Balanced 75%</button>
-              <button type="button" className="secondary" onClick={() => onUniversalScale(100)}>Full 100%</button>
+              <button type="button" className="secondary" onClick={() => onUniversalScale(100)}>Large 100%</button>
             </div>
           </div>
           <div className="row-btns">
             <button type="button" className="secondary" onClick={clearAll}>Start over</button>
           </div>
-          <p className="hint">Drag photo A onto photo B to <strong>swap</strong>.</p>
         </aside>
         <div className="workspace">
           <div className="canvas-wrap" ref={wrapRef}>
@@ -413,6 +399,8 @@ export default function App() {
               {cells.map((cell) => {
                 const photo = photos.find((p) => p.id === cell.photoId)
                 if (!photo) return null
+                const oxR = cell.oxRel != null ? cell.oxRel : (cell.ox || 0) / Math.max(1, cell.w)
+                const oyR = cell.oyRel != null ? cell.oyRel : (cell.oy || 0) / Math.max(1, cell.h)
                 return (
                   <div key={cell.id} className={`cell ${cell.id === selectedId ? 'selected' : ''}`} data-id={cell.id}
                     style={{ left: cell.x, top: cell.y, width: cell.w, height: cell.h, borderRadius: cellRadius, transform: cell.rotate ? `rotate(${cell.rotate}deg)` : undefined }}
@@ -420,17 +408,20 @@ export default function App() {
                     onPointerDown={(e) => onCellPointerDown(e, cell)}
                     onWheel={(e) => onCellWheel(e, cell)}>
                     <img src={photo.url} alt={photo.name} draggable={false}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `translate(${cell.ox || 0}px, ${cell.oy || 0}px) scale(${cell.scale || 1})`, transformOrigin: 'center center', pointerEvents: 'none' }} />
+                      style={{
+                        width: '100%', height: '100%', objectFit: 'cover',
+                        transform: `translate(${oxR * 100}%, ${oyR * 100}%) scale(${cell.scale || 1})`,
+                        transformOrigin: 'center center', pointerEvents: 'none',
+                      }} />
                     {cell.showCaption && cell.caption && (<div className={`cell-caption bg-${cell.captionBg || 'gradient'} size-${cell.captionSize || 'md'}`}>{cell.caption}</div>)}
                   </div>
                 )
               })}
-              {showCaption && caption && <div className="global-caption">{caption}</div>}
             </div>
           </div>
           <div className="status-bar">
             <span>{photos.length ? `${photos.length} / ${MAX_PHOTOS} photos` : 'No photos yet'}</span>
-            <span>{stageW} × {stageH} px · scale {layoutScalePct}%</span>
+            <span>{stageW} × {stageH} px · density {layoutScalePct}%</span>
           </div>
         </div>
       </div>
