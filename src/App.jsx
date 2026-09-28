@@ -3,6 +3,7 @@ import './App.css'
 import { deleteProject, listProjects, loadProject, saveProject, uid } from './lib/storage'
 import { qualityLabel, getAspectRatio, buildLayout } from './lib/layouts'
 import { beginCellDrag } from './lib/dragSwap'
+import { applyCropMemory, cropFromCell, preserveCropOnResize, saveCropToMemory, scaleCellsOnStage } from './lib/crop'
 
 const MAX_PHOTOS = 30
 
@@ -29,14 +30,21 @@ export default function App() {
   const [stageW, setStageW] = useState(640)
   const [stageH, setStageH] = useState(640)
   const [status, setStatus] = useState('')
-  const [panMode, setPanMode] = useState(false)
+  const [layoutScalePct, setLayoutScalePct] = useState(100)
   const wrapRef = useRef(null)
   const fileRef = useRef(null)
   const dragRef = useRef(null)
+  const cellsRef = useRef([])
+  const [panMode, setPanMode] = useState(false)
   const cropMemory = useRef(new Map())
 
+  useEffect(() => { cellsRef.current = cells }, [cells])
+
   const selected = useMemo(() => cells.find((c) => c.id === selectedId) || null, [cells, selectedId])
-  const selectedPhoto = useMemo(() => (selected ? photos.find((p) => p.id === selected.photoId) : null), [selected, photos])
+  const selectedPhoto = useMemo(
+    () => (selected ? photos.find((p) => p.id === selected.photoId) : null),
+    [selected, photos],
+  )
 
   const computeStage = useCallback(() => {
     const ratio = getAspectRatio(aspect, customW, customH)
@@ -44,35 +52,63 @@ export default function App() {
     const availW = Math.max(200, (wrap ? wrap.clientWidth : 800) - 32)
     const availH = Math.max(200, (wrap ? wrap.clientHeight : 600) - 32)
     let w, h
-    if (availW / availH > ratio) { h = Math.floor(availH); w = Math.floor(h * ratio) }
-    else { w = Math.floor(availW); h = Math.floor(w / ratio) }
-    w = Math.max(200, w); h = Math.max(200, h)
-    setStageW(w); setStageH(h)
+    if (availW / availH > ratio) {
+      h = Math.floor(availH)
+      w = Math.floor(h * ratio)
+    } else {
+      w = Math.floor(availW)
+      h = Math.floor(w / ratio)
+    }
+    w = Math.max(200, w)
+    h = Math.max(200, h)
+    setStageW(w)
+    setStageH(h)
     return { w, h }
   }, [aspect, customW, customH])
 
-  const rebuild = useCallback((photoList = photos, type = layoutType) => {
+  const rebuild = useCallback((photoList = photos, type = layoutType, scalePct = layoutScalePct) => {
     const { w, h } = computeStage()
-    if (!photoList.length) { setCells([]); return }
+    if (!photoList.length) {
+      setCells([])
+      return
+    }
     const prevByPhoto = {}
-    cells.forEach((c) => {
+    cellsRef.current.forEach((c) => {
+      const crop = cropFromCell(c)
       prevByPhoto[c.photoId] = {
-        caption: c.caption, showCaption: c.showCaption, captionFont: c.captionFont,
-        captionSize: c.captionSize, captionBg: c.captionBg, scale: c.scale, ox: c.ox, oy: c.oy, rotate: c.rotate,
+        caption: c.caption, showCaption: c.showCaption,
+        captionFont: c.captionFont, captionSize: c.captionSize, captionBg: c.captionBg,
+        ...crop,
       }
+      cropMemory.current.set(c.photoId, crop)
     })
     const enriched = photoList.map((p) => ({ ...p, ...(prevByPhoto[p.id] || {}) }))
-    const next = buildLayout(type, enriched, w, h, margin, gap, smartSize, type === 'freeform' ? cells : null)
-    next.forEach((c) => {
+    let next = buildLayout(type, enriched, w, h, margin, gap, smartSize)
+
+    const factor = Math.max(0.4, Math.min(1, (scalePct || 100) / 100))
+    if (factor < 0.999) {
+      next = scaleCellsOnStage(next, w, h, factor)
+    }
+
+    next = next.map((c) => {
       const prev = prevByPhoto[c.photoId]
-      if (prev) Object.assign(c, {
-        scale: prev.scale || 1, ox: prev.ox || 0, oy: prev.oy || 0, rotate: prev.rotate || 0,
-        caption: prev.caption || '', showCaption: !!prev.showCaption,
-        captionFont: prev.captionFont || 'sans', captionSize: prev.captionSize || 'md', captionBg: prev.captionBg || 'gradient',
-      })
+      const mem = cropMemory.current.get(c.photoId)
+      let cell = { ...c }
+      if (prev) {
+        cell = {
+          ...cell,
+          caption: prev.caption || '',
+          showCaption: !!prev.showCaption,
+          captionFont: prev.captionFont || 'sans',
+          captionSize: prev.captionSize || 'md',
+          captionBg: prev.captionBg || 'gradient',
+        }
+      }
+      cell = applyCropMemory(cell, mem || prev)
+      return cell
     })
     setCells(next)
-  }, [photos, layoutType, margin, gap, smartSize, computeStage, cells])
+  }, [photos, layoutType, margin, gap, smartSize, computeStage, layoutScalePct])
 
   useEffect(() => {
     const onResize = () => computeStage()
@@ -81,8 +117,13 @@ export default function App() {
     return () => window.removeEventListener('resize', onResize)
   }, [computeStage])
 
-  useEffect(() => { rebuild() /* eslint-disable-next-line */ }, [aspect, customW, customH, layoutType, gap, margin, smartSize, photos.length])
-  useEffect(() => { listProjects().then(setProjects).catch(() => {}) }, [])
+  useEffect(() => {
+    rebuild()
+  }, [aspect, customW, customH, layoutType, gap, margin, smartSize, photos.length, layoutScalePct])
+
+  useEffect(() => {
+    listProjects().then(setProjects).catch(() => {})
+  }, [])
 
   const loadFiles = (fileList) => {
     const remaining = MAX_PHOTOS - photos.length
@@ -95,17 +136,29 @@ export default function App() {
       const url = URL.createObjectURL(file)
       const img = new Image()
       img.onload = () => {
-        next.push({ id: uid(), url, img, w: img.naturalWidth, h: img.naturalHeight, pixels: img.naturalWidth * img.naturalHeight, name: file.name })
+        next.push({
+          id: uid(), url, img,
+          w: img.naturalWidth, h: img.naturalHeight,
+          pixels: img.naturalWidth * img.naturalHeight, name: file.name,
+        })
         loaded++
         if (loaded === files.length) setPhotos((prev) => [...prev, ...next])
       }
-      img.onerror = () => { URL.revokeObjectURL(url); loaded++; if (loaded === files.length && next.length) setPhotos((prev) => [...prev, ...next]) }
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        loaded++
+        if (loaded === files.length && next.length) setPhotos((prev) => [...prev, ...next])
+      }
       img.src = url
     })
   }
 
   const removePhoto = (id) => {
-    setPhotos((prev) => { const p = prev.find((x) => x.id === id); if (p?.url) URL.revokeObjectURL(p.url); return prev.filter((x) => x.id !== id) })
+    setPhotos((prev) => {
+      const p = prev.find((x) => x.id === id)
+      if (p?.url) URL.revokeObjectURL(p.url)
+      return prev.filter((x) => x.id !== id)
+    })
     setCells((prev) => prev.filter((c) => c.photoId !== id))
     if (selected?.photoId === id) setSelectedId(null)
   }
@@ -113,23 +166,61 @@ export default function App() {
   const clearAll = () => {
     if (!photos.length || !confirm('Remove all photos?')) return
     photos.forEach((p) => p.url && URL.revokeObjectURL(p.url))
-    setPhotos([]); setCells([]); setSelectedId(null)
+    setPhotos([])
+    setCells([])
+    setSelectedId(null)
   }
 
   const updateSelected = (patch) => {
     if (!selectedId) return
-    setCells((prev) => prev.map((c) => (c.id === selectedId ? { ...c, ...patch } : c)))
+    setCells((prev) =>
+      prev.map((c) => {
+        if (c.id !== selectedId) return c
+        let next = { ...c, ...patch }
+        if ('ox' in patch || 'oy' in patch || 'scale' in patch) {
+          const w = Math.max(1, next.w)
+          const h = Math.max(1, next.h)
+          if ('ox' in patch) next.oxRel = (next.ox || 0) / w
+          if ('oy' in patch) next.oyRel = (next.oy || 0) / h
+          saveCropToMemory(next, cropMemory)
+        }
+        if ('oxRel' in patch || 'oyRel' in patch) {
+          next = applyCropMemory(next, { ...cropFromCell(next), ...patch })
+          saveCropToMemory(next, cropMemory)
+        }
+        return next
+      }),
+    )
+  }
+
+  const onUniversalScale = (pct) => {
+    setLayoutScalePct(pct)
   }
 
   const onCellPointerDown = (e, cell) => {
     beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef })
   }
 
+  const onCellWheel = (e, cell) => {
+    if (cell.id !== selectedId) return
+    e.preventDefault()
+    e.stopPropagation()
+    const delta = e.deltaY > 0 ? -0.08 : 0.08
+    setCells((prev) =>
+      prev.map((c) => {
+        if (c.id !== cell.id) return c
+        const next = { ...c, scale: Math.min(5, Math.max(0.5, (c.scale || 1) + delta)) }
+        return saveCropToMemory(next, cropMemory)
+      }),
+    )
+  }
+
   const exportPNG = () => {
     if (!photos.length) return
     const scale = 3
     const canvas = document.createElement('canvas')
-    canvas.width = stageW * scale; canvas.height = stageH * scale
+    canvas.width = stageW * scale
+    canvas.height = stageH * scale
     const ctx = canvas.getContext('2d')
     ctx.fillStyle = bgColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -137,21 +228,31 @@ export default function App() {
       const photo = photos.find((p) => p.id === cell.photoId)
       if (!photo?.img) return
       ctx.save()
-      ctx.translate((cell.x + cell.w / 2) * scale, (cell.y + cell.h / 2) * scale)
+      const cx = (cell.x + cell.w / 2) * scale
+      const cy = (cell.y + cell.h / 2) * scale
+      ctx.translate(cx, cy)
       if (cell.rotate) ctx.rotate((cell.rotate * Math.PI) / 180)
-      const rw = cell.w * scale, rh = cell.h * scale, r = cellRadius * scale
+      const rw = cell.w * scale
+      const rh = cell.h * scale
+      const r = cellRadius * scale
       ctx.beginPath()
       ctx.moveTo(-rw / 2 + r, -rh / 2)
       ctx.arcTo(rw / 2, -rh / 2, rw / 2, rh / 2, r)
       ctx.arcTo(rw / 2, rh / 2, -rw / 2, rh / 2, r)
       ctx.arcTo(-rw / 2, rh / 2, -rw / 2, -rh / 2, r)
       ctx.arcTo(-rw / 2, -rh / 2, rw / 2, -rh / 2, r)
-      ctx.closePath(); ctx.clip()
-      const imgRatio = photo.w / photo.h, cellRatio = rw / rh
+      ctx.closePath()
+      ctx.clip()
+      const imgRatio = photo.w / photo.h
+      const cellRatio = rw / rh
       let dw, dh
-      if (imgRatio > cellRatio) { dh = rh; dw = dh * imgRatio } else { dw = rw; dh = dw / imgRatio }
-      const sc = cell.scale || 1; dw *= sc; dh *= sc
-      ctx.drawImage(photo.img, -rw / 2 + (rw - dw) / 2 + (cell.ox || 0) * scale, -rh / 2 + (rh - dh) / 2 + (cell.oy || 0) * scale, dw, dh)
+      if (imgRatio > cellRatio) { dh = rh; dw = dh * imgRatio }
+      else { dw = rw; dh = dw / imgRatio }
+      const sc = cell.scale || 1
+      dw *= sc; dh *= sc
+      const dx = -rw / 2 + (rw - dw) / 2 + (cell.ox || 0) * scale
+      const dy = -rh / 2 + (rh - dh) / 2 + (cell.oy || 0) * scale
+      ctx.drawImage(photo.img, dx, dy, dw, dh)
       if (cell.showCaption && cell.caption) {
         ctx.fillStyle = 'rgba(0,0,0,0.7)'
         ctx.fillRect(-rw / 2, rh / 2 - 28 * scale, rw, 28 * scale)
@@ -162,6 +263,14 @@ export default function App() {
       }
       ctx.restore()
     })
+    if (showCaption && caption) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'
+      ctx.fillRect(0, canvas.height - 60 * scale, canvas.width, 60 * scale)
+      ctx.fillStyle = '#fff'
+      ctx.font = `600 ${18 * scale}px system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.fillText(caption, canvas.width / 2, canvas.height - 22 * scale)
+    }
     const link = document.createElement('a')
     link.download = `${projectName || 'family-collage'}.png`
     link.href = canvas.toDataURL('image/png')
@@ -171,7 +280,8 @@ export default function App() {
   const replaceSelected = () => {
     if (!selected) return
     const input = document.createElement('input')
-    input.type = 'file'; input.accept = 'image/*'
+    input.type = 'file'
+    input.accept = 'image/*'
     input.onchange = () => {
       const file = input.files && input.files[0]
       if (!file) return
@@ -228,10 +338,18 @@ export default function App() {
               <div className="selected-actions">
                 <button type="button" className={`secondary ${panMode ? 'on' : ''}`} onClick={() => setPanMode((v) => !v)}>{panMode ? 'Moving photo…' : 'Move photo'}</button>
                 <button type="button" className="secondary" onClick={() => updateSelected({ rotate: ((selected.rotate || 0) + 90) % 360 })}>Rotate</button>
-                <button type="button" className="secondary" onClick={() => { cropMemory.current.set(selected.photoId, { scale: selected.scale || 1, ox: selected.ox || 0, oy: selected.oy || 0 }); updateSelected({ scale: Math.min(5, (selected.scale || 1) + 0.15) }) }}>＋ Zoom</button>
-                <button type="button" className="secondary" onClick={() => { cropMemory.current.set(selected.photoId, { scale: selected.scale || 1, ox: selected.ox || 0, oy: selected.oy || 0 }); updateSelected({ scale: Math.max(0.5, (selected.scale || 1) - 0.15) }) }}>－ Zoom</button>
-                <button type="button" className="secondary" onClick={() => { const mem = cropMemory.current.get(selected.photoId); if (mem) updateSelected(mem) }}>Restore crop</button>
-                <button type="button" className="secondary" onClick={() => updateSelected({ scale: 1, ox: 0, oy: 0 })}>Reset view</button>
+                <button type="button" className="secondary" onClick={() => { saveCropToMemory(selected, cropMemory); updateSelected({ scale: Math.min(5, (selected.scale || 1) + 0.15) }) }}>＋ Zoom</button>
+                <button type="button" className="secondary" onClick={() => { saveCropToMemory(selected, cropMemory); updateSelected({ scale: Math.max(0.5, (selected.scale || 1) - 0.15) }) }}>－ Zoom</button>
+                <button type="button" className="secondary" onClick={() => {
+                  const mem = cropMemory.current.get(selected.photoId)
+                  if (!mem) return
+                  const w = Math.max(1, selected.w)
+                  const h = Math.max(1, selected.h)
+                  const oxRel = mem.oxRel != null ? mem.oxRel : (mem.ox || 0) / w
+                  const oyRel = mem.oyRel != null ? mem.oyRel : (mem.oy || 0) / h
+                  updateSelected({ scale: mem.scale || 1, oxRel, oyRel, ox: oxRel * w, oy: oyRel * h })
+                }}>Restore crop</button>
+                <button type="button" className="secondary" onClick={() => updateSelected({ scale: 1, ox: 0, oy: 0, oxRel: 0, oyRel: 0 })}>Reset view</button>
                 <button type="button" className="secondary" onClick={replaceSelected}>Replace</button>
                 <button type="button" className="secondary danger" onClick={() => selectedPhoto && removePhoto(selectedPhoto.id)}>Remove</button>
               </div>
@@ -272,10 +390,21 @@ export default function App() {
               <div className={`toggle ${smartSize ? 'on' : ''}`} onClick={() => setSmartSize((v) => !v)} role="switch" />
             </div>
           </div>
+          <div className="control-group">
+            <div className="section-title">Universal scale</div>
+            <label>All photos size <span>{layoutScalePct}%</span></label>
+            <input type="range" min={50} max={100} step={5} value={layoutScalePct} onChange={(e) => onUniversalScale(+e.target.value)} />
+            <p className="hint">Slide down to shrink every frame so more photos fit. Crop stays locked to each frame.</p>
+            <div className="selected-actions" style={{ marginTop: 6 }}>
+              <button type="button" className="secondary" onClick={() => onUniversalScale(60)}>Compact 60%</button>
+              <button type="button" className="secondary" onClick={() => onUniversalScale(75)}>Balanced 75%</button>
+              <button type="button" className="secondary" onClick={() => onUniversalScale(100)}>Full 100%</button>
+            </div>
+          </div>
           <div className="row-btns">
             <button type="button" className="secondary" onClick={clearAll}>Start over</button>
           </div>
-          <p className="hint">Drag photo A onto photo B to <strong>swap</strong>. Full engine: <a href="./engine.html" style={{ color: 'var(--accent)' }}>engine.html</a></p>
+          <p className="hint">Drag photo A onto photo B to <strong>swap</strong>.</p>
         </aside>
         <div className="workspace">
           <div className="canvas-wrap" ref={wrapRef}>
@@ -288,17 +417,20 @@ export default function App() {
                   <div key={cell.id} className={`cell ${cell.id === selectedId ? 'selected' : ''}`} data-id={cell.id}
                     style={{ left: cell.x, top: cell.y, width: cell.w, height: cell.h, borderRadius: cellRadius, transform: cell.rotate ? `rotate(${cell.rotate}deg)` : undefined }}
                     onClick={(e) => { e.stopPropagation(); setSelectedId(cell.id) }}
-                    onPointerDown={(e) => onCellPointerDown(e, cell)}>
-                    <img src={photo.url} alt={photo.name} draggable={false} style={{ transform: `translate(${cell.ox || 0}px, ${cell.oy || 0}px) scale(${cell.scale || 1})`, transformOrigin: 'center center', pointerEvents: 'none' }} />
+                    onPointerDown={(e) => onCellPointerDown(e, cell)}
+                    onWheel={(e) => onCellWheel(e, cell)}>
+                    <img src={photo.url} alt={photo.name} draggable={false}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `translate(${cell.ox || 0}px, ${cell.oy || 0}px) scale(${cell.scale || 1})`, transformOrigin: 'center center', pointerEvents: 'none' }} />
                     {cell.showCaption && cell.caption && (<div className={`cell-caption bg-${cell.captionBg || 'gradient'} size-${cell.captionSize || 'md'}`}>{cell.caption}</div>)}
                   </div>
                 )
               })}
+              {showCaption && caption && <div className="global-caption">{caption}</div>}
             </div>
           </div>
           <div className="status-bar">
             <span>{photos.length ? `${photos.length} / ${MAX_PHOTOS} photos` : 'No photos yet'}</span>
-            <span>{stageW} × {stageH} px</span>
+            <span>{stageW} × {stageH} px · scale {layoutScalePct}%</span>
           </div>
         </div>
       </div>
