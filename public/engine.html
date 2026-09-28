@@ -1,1 +1,193 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Family Frame — Collage for us</title><style>:root{--bg:#141210;--panel:#1e1b18;--panel-elevated:#26221e;--border:#3a342c;--text:#f3efe8;--muted:#a89f92;--accent:#e8a87c;--accent-hover:#d4926a;--accent-soft:rgba(232,168,124,0.15);--danger:#e07a7a;--success:#7bc47f;--warning:#e0b35a;--radius:12px;--radius-sm:8px;--shadow:0 12px 40px rgba(0,0,0,0.45);--shadow-soft:0 4px 20px rgba(0,0,0,0.25);--stage-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.04)}*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",sans-serif;background:var(--bg);background-image:radial-gradient(ellipse 120% 80% at 50% -20%,rgba(232,168,124,0.08),transparent),radial-gradient(ellipse 80% 50% at 100% 100%,rgba(120,90,60,0.06),transparent);color:var(--text);min-height:100vh;display:flex;flex-direction:column}header{background:linear-gradient(180deg,var(--panel-elevated) 0%,var(--panel) 100%);border-bottom:1px solid var(--border);padding:14px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}header h1{font-size:1.2rem;font-weight:650;letter-spacing:-0.03em;display:flex;align-items:center;gap:8px}header h1 .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#c47a52);display:inline-flex;align-items:center;justify-content:center;font-size:0.9rem;box-shadow:0 2px 8px rgba(232,168,124,0.35)}header h1 span{color:var(--accent);font-weight:700}header .tagline{font-size:0.72rem;color:var(--muted);font-weight:400;margin-left:4px;letter-spacing:0.02em}.header-actions{display:flex;gap:8px;flex-wrap:wrap}button,.btn{background:var(--accent);color:#1a1410;border:none;border-radius:var(--radius-sm);padding:9px 16px;font-size:0.875rem;font-weight:600;cursor:pointer;transition:background 0.15s,transform 0.1s,box-shadow 0.15s;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(232,168,124,0.25)}button:hover,.btn:hover{background:var(--accent-hover);box-shadow:0 4px 12px rgba(232,168,124,0.35)}button:active{transform:scale(0.97)}button.secondary{background:transparent;border:1px solid var(--border);color:var(--text);box-shadow:none}button.secondary:hover{background:var(--panel-elevated);border-color:var(--muted)}button.danger{background:var(--danger);color:#1a1010;box-shadow:0 2px 8px rgba(224,122,122,0.25)}button:disabled{opacity:0.4;cursor:not-allowed;box-shadow:none}button.on-pan{background:var(--success);color:#0a120a;border-color:var(--success)}button.on-lock{background:var(--accent);color:#1a1410}.main{flex:1;display:grid;grid-template-columns:320px 1fr;gap:0;min-height:0;overflow:hidden}@media (max-width:900px){.main{grid-template-columns:1fr}.sidebar{max-height:42vh;overflow-y:auto}}.sidebar{background:var(--panel);border-right:1px solid var(--border);padding:16px 16px 24px;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:18px;min-height:0}.section-title{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:8px;font-weight:650}.control-group{display:flex;flex-direction:column;gap:8px}label{font-size:0.8rem;color:var(--muted);display:flex;justify-content:space-between;align-items:center}select,input[type="number"],input[type="text"],input[type="color"]{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:0.875rem;width:100%}select:focus,input:focus{outline:2px solid var(--accent);outline-offset:-1px}.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.toggle{position:relative;width:42px;height:24px;background:var(--border);border-radius:12px;cursor:pointer;transition:background 0.2s}.toggle.on{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}.toggle::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 0.2s}.toggle.on::after{transform:translateX(18px)}.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:28px 16px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s,transform 0.15s;background:var(--bg)}.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-1px)}.upload-zone p{font-size:0.82rem;color:var(--muted);margin-top:6px;line-height:1.4}.upload-zone strong{color:var(--text);font-size:0.95rem}.photo-list{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto}.photo-item{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:6px;padding:6px 8px;font-size:0.75rem}.photo-item img{width:36px;height:36px;object-fit:cover;border-radius:4px}.photo-item .meta{flex:1;min-width:0}.photo-item .meta span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.photo-item .px{color:var(--muted);font-size:0.7rem}.photo-item .quality{font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:600}.quality.high{background:rgba(61,214,140,0.2);color:var(--success)}.quality.med{background:rgba(245,166,35,0.2);color:var(--warning)}.quality.low{background:rgba(255,92,92,0.2);color:var(--danger)}.photo-item button{background:transparent;border:none;color:var(--muted);padding:4px;font-size:1rem;line-height:1}.photo-item button:hover{color:var(--danger)}.toolbar{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--panel)}.toolbar .hint{font-size:0.72rem;color:var(--muted);margin-left:4px}.workspace{display:flex;flex-direction:column;min-height:0;overflow:hidden;background:#100e0c}.canvas-wrap{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:28px 20px;position:relative;min-height:0;background:radial-gradient(ellipse at center,rgba(40,34,28,0.6) 0%,transparent 70%),#100e0c}#collage-stage{position:relative;background:#faf6f0;box-shadow:var(--stage-shadow);overflow:hidden;transition:width 0.25s ease,height 0.25s ease;border-radius:2px}#bg-layer{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}#bg-layer img{width:100%;height:100%;object-fit:cover;transform-origin:center center}#grid-overlay{position:absolute;inset:0;z-index:0;pointer-events:none;display:none}#grid-overlay.visible{display:block}#grid-overlay .gline-v,#grid-overlay .gline-h{position:absolute;background:rgba(232,168,124,0.35)}#grid-overlay .gline-v{top:0;bottom:0;width:1px}#grid-overlay .gline-h{left:0;right:0;height:1px}.cell{z-index:1}.cell{position:absolute;overflow:hidden;background:#e0e0e0;cursor:grab;transition:box-shadow 0.15s}.cell:active{cursor:grabbing}.cell.selected{outline:3px solid var(--accent);outline-offset:-3px;z-index:10;box-shadow:0 0 0 4px var(--accent-soft)}.cell.swap-target{outline:3px dashed var(--success);outline-offset:-3px;box-shadow:0 0 0 4px rgba(123,196,127,0.35)}.cell img{pointer-events:none;user-select:none}.cell .resize-handle{position:absolute;width:12px;height:12px;background:var(--accent);border-radius:2px;right:2px;bottom:2px;cursor:se-resize;opacity:0;transition:opacity 0.15s}.cell.selected .resize-handle{opacity:1}.cell .badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.65);color:#fff;font-size:0.65rem;padding:2px 5px;border-radius:3px;pointer-events:none}.cell.low-quality::after{content:"⚠ Low res";position:absolute;bottom:4px;right:4px;background:rgba(255,92,92,0.9);color:#fff;font-size:0.6rem;padding:2px 5px;border-radius:3px}.empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8a8070;pointer-events:none;padding:24px;text-align:center}.empty-state .empty-icon{width:72px;height:72px;border-radius:20px;background:linear-gradient(145deg,#f0e6d8,#e0d0b8);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 8px 24px rgba(0,0,0,0.12);font-size:1.8rem}.empty-state h3{font-size:1.1rem;font-weight:650;color:#5c5348;margin-bottom:6px;letter-spacing:-0.02em}.empty-state p{font-size:0.88rem;color:#8a8070;max-width:240px;line-height:1.45}.status-bar{padding:9px 18px;background:var(--panel);border-top:1px solid var(--border);font-size:0.75rem;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}@media print{body *{visibility:hidden}#collage-stage,#collage-stage *{visibility:visible}#collage-stage{position:absolute;left:0;top:0;width:100%!important;height:auto!important;box-shadow:none}.cell{border:none!important}}.theme-sepia #collage-stage{filter:sepia(0.35) contrast(1.05)}.theme-warm #collage-stage{filter:sepia(0.15) saturate(1.15) brightness(1.02)}.theme-cool #collage-stage{filter:saturate(0.9) hue-rotate(10deg)}.theme-bw #collage-stage{filter:grayscale(1) contrast(1.1)}.caption-bar{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.7));color:#fff;padding:20px 16px 12px;font-size:1rem;text-align:center;pointer-events:none;display:none}.caption-bar.visible{display:block}</style></head><body><header><h1><span class="logo">🖼️</span>Family <span>Frame</span><span class="tagline">for us</span></h1><div class="header-actions"><button id="btn-shuffle" class="secondary" title="Try a new arrangement">↻ Surprise me</button><button id="btn-export" disabled>⬇ Save PNG</button><button id="btn-print" class="secondary" disabled>🖨 Print</button></div></header><div class="main"><aside class="sidebar"><div><div class="section-title">Our photos</div><div class="upload-zone" id="upload-zone"><strong>Drop family photos here</strong><p>or click to choose · up to 30 · JPG / PNG / WEBP</p><input type="file" id="file-input" accept="image/*" multiple hidden></div><div class="photo-list" id="photo-list"></div></div><div class="control-group"><div class="section-title">Frame shape</div><select id="aspect-ratio"><option value="1:1">1 : 1 (Square)</option><option value="4:5">4 : 5 (Portrait)</option><option value="3:2">3 : 2 (Classic)</option><option value="16:9">16 : 9 (Wide)</option><option value="A4P">A4 Portrait</option><option value="A4L">A4 Landscape</option><option value="5:7">5 × 7</option><option value="custom">Custom…</option></select><div id="custom-ratio" style="display:none;gap:8px;align-items:center"><input type="number" id="custom-w" placeholder="W" min="1" value="30" style="width:45%"><span style="align-self:center;color:var(--muted)">:</span><input type="number" id="custom-h" placeholder="H" min="1" value="20" style="width:45%"></div></div><div class="control-group"><div class="section-title">Arrangement</div><select id="layout-type"><option value="collage">Collage grid (balanced)</option><option value="mosaic">Mosaic (mixed sizes)</option><option value="grid">Equal grid</option><option value="masonry">Masonry columns</option><option value="polaroid">Polaroid stack</option><option value="radial">Family tree (radial)</option><option value="freeform">Freeform (you place them)</option></select></div><div class="control-group"><div class="section-title">Grid Coordinates</div><p style="font-size:0.72rem;color:var(--muted);line-height:1.35;margin-bottom:8px">Canvas is divided into square units. Change X/Y/W/H → photo moves and resizes. Drag onto another photo to swap.</p><label>Canvas grid W <span id="grid-w-val">300</span></label><input type="range" id="grid-w" min="50" max="600" value="300" step="10"><label>Canvas grid H <span id="grid-h-val">200</span></label><input type="range" id="grid-h" min="50" max="400" value="200" step="10"><div class="toggle-row" style="margin-top:8px"><label>Show grid lines</label><div class="toggle" id="show-grid" title="Overlay grid lines"></div></div><label style="margin-top:8px">Inner padding (px) <span id="inner-pad-val">4</span></label><input type="range" id="inner-pad" min="0" max="24" value="4"><div id="grid-pos-panel" style="display:none;margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)"><div class="section-title" style="margin-bottom:6px">Selected photo rectangle</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.8rem"><label>X (left) <input type="number" id="g-x" min="0" value="0" step="1" style="width:100%"></label><label>Y (top) <input type="number" id="g-y" min="0" value="0" step="1" style="width:100%"></label><label>Width <input type="number" id="g-gw" min="1" value="50" step="1" style="width:100%"></label><label>Height <input type="number" id="g-gh" min="1" value="50" step="1" style="width:100%"></label></div><p id="pixel-size-hint" style="font-size:0.72rem;color:var(--accent);margin-top:4px;font-weight:500">≈ — × — px</p><div class="toggle-row" style="margin-top:10px"><label style="font-size:0.8rem;color:var(--text)">Lock aspect ratio</label><div class="toggle" id="lock-aspect-toggle"></div></div><button id="btn-apply-grid-pos" class="secondary" style="width:100%;margin-top:8px">Apply rectangle</button></div></div><div class="control-group"><div class="section-title">Keep it sharp</div><div class="toggle-row"><label for="smart-size">Smart size matching</label><div class="toggle on" id="smart-size"></div></div></div><div class="control-group"><div class="section-title">Spacing & Style</div><label>Gap (px) <span id="gap-val">6</span></label><input type="range" id="gap" min="0" max="24" value="6"><label>Outer margin (px) <span id="margin-val">12</span></label><input type="range" id="margin" min="0" max="40" value="12"><label>Solid background</label><input type="color" id="bg-color" value="#ffffff"><label>Border radius (px) <span id="radius-val">4</span></label><input type="range" id="cell-radius" min="0" max="20" value="4"></div><div class="control-group"><div class="section-title">Background Photo</div><button id="btn-bg-photo" class="secondary" style="width:100%">Choose background image</button><button id="btn-bg-clear" class="secondary" style="width:100%;margin-top:6px" disabled>Clear background photo</button><label style="margin-top:8px">Opacity <span id="bg-opacity-val">40</span>%</label><input type="range" id="bg-opacity" min="5" max="100" value="40" disabled><label>Blur (px) <span id="bg-blur-val">0</span></label><input type="range" id="bg-blur" min="0" max="20" value="0" disabled></div><div class="control-group"><div class="section-title">Mood</div><select id="theme"><option value="none">Natural</option><option value="sepia">Vintage sepia</option><option value="warm">Warm family</option><option value="cool">Cool modern</option><option value="bw">Black & white</option></select></div><div class="control-group"><div class="section-title">Caption</div><input type="text" id="caption" placeholder="e.g. Our family · 2026"><div class="toggle-row" style="margin-top:6px"><label>Show on collage</label><div class="toggle" id="show-caption"></div></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="btn-clear" class="secondary" style="flex:1">Start over</button><button id="btn-fit" class="secondary" style="flex:1">Fit view</button></div></aside><div class="workspace"><div class="toolbar"><span style="font-size:0.8rem;color:var(--muted)">Selected:</span><button id="btn-replace" class="secondary" disabled>Replace</button><button id="btn-rotate" class="secondary" disabled>Rotate</button><button id="btn-pan-mode" class="secondary" disabled>Move photo</button><button id="btn-lock-ratio" class="secondary" disabled>Lock ratio</button><button id="btn-zoom-in" class="secondary" disabled>＋</button><button id="btn-zoom-out" class="secondary" disabled>－</button><button id="btn-restore-crop" class="secondary" disabled>Restore crop</button><button id="btn-reset-crop" class="secondary" disabled>Reset view</button><button id="btn-delete-cell" class="secondary danger" disabled>Remove</button><span style="flex:1"></span><span id="dpi-info" class="hint">Drag onto another photo to swap · Move photo = pan · Wheel = zoom</span></div><div class="canvas-wrap" id="canvas-wrap"><div id="collage-stage"><div id="bg-layer"></div><div id="grid-overlay"></div><div class="empty-state" id="empty-state"><div class="empty-icon">📷</div><h3>Start your family collage</h3><p>Drop photos here or use the panel — we will arrange them for you.</p></div><div class="caption-bar" id="caption-bar"></div></div></div><div class="status-bar"><span id="status-photos">No photos yet</span><span id="status-size">—</span><span id="status-quality">Smart size: ON</span></div></div></div><script src="./engine-app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Frame — Collage for us</title>
+<link rel="stylesheet" href="./engine.css">
+</head>
+<body>
+
+  <header>
+    <h1>
+      <span class="logo">🖼️</span>
+      Family <span>Frame</span>
+      <span class="tagline">for us</span>
+    </h1>
+    <div class="header-actions">
+      <button id="btn-shuffle" class="secondary" title="Try a new arrangement">↻ Surprise me</button>
+      <button id="btn-export" disabled>⬇ Save PNG</button>
+      <button id="btn-print" class="secondary" disabled>🖨 Print</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <aside class="sidebar">
+      <div>
+        <div class="section-title">Our photos</div>
+        <div class="upload-zone" id="upload-zone">
+          <strong>Drop family photos here</strong>
+          <p>or click to choose · up to 30 · JPG / PNG / WEBP</p>
+          <input type="file" id="file-input" accept="image/*" multiple hidden>
+        </div>
+        <div class="photo-list" id="photo-list"></div>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">Frame shape</div>
+        <select id="aspect-ratio">
+          <option value="1:1">1 : 1 (Square)</option>
+          <option value="4:5">4 : 5 (Portrait)</option>
+          <option value="3:2">3 : 2 (Classic)</option>
+          <option value="16:9">16 : 9 (Wide)</option>
+          <option value="A4P">A4 Portrait</option>
+          <option value="A4L">A4 Landscape</option>
+          <option value="5:7">5 × 7</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <div id="custom-ratio" style="display:none; gap:8px; align-items:center;">
+          <input type="number" id="custom-w" placeholder="W" min="1" value="30" style="width:45%">
+          <span style="align-self:center;color:var(--muted)">:</span>
+          <input type="number" id="custom-h" placeholder="H" min="1" value="20" style="width:45%">
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">Arrangement</div>
+        <select id="layout-type">
+          <option value="collage">Collage grid (balanced)</option>
+          <option value="mosaic">Mosaic (mixed sizes)</option>
+          <option value="grid">Equal grid</option>
+          <option value="masonry">Masonry columns</option>
+          <option value="polaroid">Polaroid stack</option>
+          <option value="radial">Family tree (radial)</option>
+          <option value="freeform">Freeform (you place them)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">Grid Coordinates</div>
+        <p style="font-size:0.72rem;color:var(--muted);line-height:1.35;margin-bottom:8px">
+          Canvas is divided into square units. Change X/Y/W/H → photo moves and resizes. Drag onto another photo to swap.
+        </p>
+        <label>Canvas grid W <span id="grid-w-val">300</span></label>
+        <input type="range" id="grid-w" min="50" max="600" value="300" step="10">
+        <label>Canvas grid H <span id="grid-h-val">200</span></label>
+        <input type="range" id="grid-h" min="50" max="400" value="200" step="10">
+        <div class="toggle-row" style="margin-top:8px">
+          <label>Show grid lines</label>
+          <div class="toggle" id="show-grid" title="Overlay grid lines"></div>
+        </div>
+        <label style="margin-top:8px">Inner padding (px) <span id="inner-pad-val">4</span></label>
+        <input type="range" id="inner-pad" min="0" max="24" value="4">
+        <div id="grid-pos-panel" style="display:none;margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+          <div class="section-title" style="margin-bottom:6px">Selected photo rectangle</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.8rem">
+            <label>X (left) <input type="number" id="g-x" min="0" value="0" step="1" style="width:100%"></label>
+            <label>Y (top) <input type="number" id="g-y" min="0" value="0" step="1" style="width:100%"></label>
+            <label>Width <input type="number" id="g-gw" min="1" value="50" step="1" style="width:100%"></label>
+            <label>Height <input type="number" id="g-gh" min="1" value="50" step="1" style="width:100%"></label>
+          </div>
+          <p id="pixel-size-hint" style="font-size:0.72rem;color:var(--accent);margin-top:4px;font-weight:500">≈ — × — px</p>
+          <div class="toggle-row" style="margin-top:10px">
+            <label style="font-size:0.8rem;color:var(--text)">Lock aspect ratio</label>
+            <div class="toggle" id="lock-aspect-toggle"></div>
+          </div>
+          <button id="btn-apply-grid-pos" class="secondary" style="width:100%;margin-top:8px">Apply rectangle</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">Keep it sharp</div>
+        <div class="toggle-row">
+          <label for="smart-size">Smart size matching</label>
+          <div class="toggle on" id="smart-size"></div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">Spacing &amp; Style</div>
+        <label>Gap (px) <span id="gap-val">6</span></label>
+        <input type="range" id="gap" min="0" max="24" value="6">
+        <label>Outer margin (px) <span id="margin-val">12</span></label>
+        <input type="range" id="margin" min="0" max="40" value="12">
+        <label>Solid background</label>
+        <input type="color" id="bg-color" value="#ffffff">
+        <label>Border radius (px) <span id="radius-val">4</span></label>
+        <input type="range" id="cell-radius" min="0" max="20" value="4">
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">Background Photo</div>
+        <button id="btn-bg-photo" class="secondary" style="width:100%">Choose background image</button>
+        <button id="btn-bg-clear" class="secondary" style="width:100%;margin-top:6px" disabled>Clear background photo</button>
+        <label style="margin-top:8px">Opacity <span id="bg-opacity-val">40</span>%</label>
+        <input type="range" id="bg-opacity" min="5" max="100" value="40" disabled>
+        <label>Blur (px) <span id="bg-blur-val">0</span></label>
+        <input type="range" id="bg-blur" min="0" max="20" value="0" disabled>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">Mood</div>
+        <select id="theme">
+          <option value="none">Natural</option>
+          <option value="sepia">Vintage sepia</option>
+          <option value="warm">Warm family</option>
+          <option value="cool">Cool modern</option>
+          <option value="bw">Black &amp; white</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">Caption</div>
+        <input type="text" id="caption" placeholder="e.g. Our family · 2026">
+        <div class="toggle-row" style="margin-top:6px">
+          <label>Show on collage</label>
+          <div class="toggle" id="show-caption"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="btn-clear" class="secondary" style="flex:1">Start over</button>
+        <button id="btn-fit" class="secondary" style="flex:1">Fit view</button>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <div class="toolbar">
+        <span style="font-size:0.8rem;color:var(--muted)">Selected:</span>
+        <button id="btn-replace" class="secondary" disabled>Replace</button>
+        <button id="btn-rotate" class="secondary" disabled>Rotate</button>
+        <button id="btn-pan-mode" class="secondary" disabled>Move photo</button>
+        <button id="btn-lock-ratio" class="secondary" disabled>Lock ratio</button>
+        <button id="btn-zoom-in" class="secondary" disabled>＋</button>
+        <button id="btn-zoom-out" class="secondary" disabled>－</button>
+        <button id="btn-restore-crop" class="secondary" disabled>Restore crop</button>
+        <button id="btn-reset-crop" class="secondary" disabled>Reset view</button>
+        <button id="btn-delete-cell" class="secondary danger" disabled>Remove</button>
+        <span style="flex:1"></span>
+        <span id="dpi-info" class="hint">Drag onto another photo to swap · Move photo = pan · Wheel = zoom</span>
+      </div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <div id="collage-stage">
+          <div id="bg-layer"></div>
+          <div id="grid-overlay"></div>
+          <div class="empty-state" id="empty-state">
+            <div class="empty-icon">📷</div>
+            <h3>Start your family collage</h3>
+            <p>Drop photos here or use the panel — we will arrange them for you.</p>
+          </div>
+          <div class="caption-bar" id="caption-bar"></div>
+        </div>
+      </div>
+      <div class="status-bar">
+        <span id="status-photos">No photos yet</span>
+        <span id="status-size">—</span>
+        <span id="status-quality">Smart size: ON</span>
+      </div>
+    </div>
+  </div>
+
+<script src="./engine-app.js"></script>
+</body>
+</html>
