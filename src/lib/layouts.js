@@ -1,4 +1,4 @@
-/** Layout helpers for Family Frame — parity with vanilla engine */
+/** Layout helpers for Family Frame — density-aware so more photos fit same canvas */
 import { uid } from './storage'
 
 export function qualityLabel(pixels) {
@@ -23,11 +23,18 @@ function orderedPhotos(photos, smartSize) {
 
 function baseCell(p, x, y, w, h, extra = {}) {
   return {
-    id: uid(), photoId: p.id, x, y, w, h,
-    scale: 1, ox: 0, oy: 0, rotate: 0, lockAspect: false,
-    caption: p.caption || '', showCaption: !!p.showCaption,
-    captionFont: p.captionFont || 'sans', captionSize: p.captionSize || 'md',
-    captionBg: p.captionBg || 'gradient', ...extra,
+    id: uid(),
+    photoId: p.id,
+    x, y, w, h,
+    scale: 1, ox: 0, oy: 0, oxRel: 0, oyRel: 0,
+    rotate: 0,
+    lockAspect: false,
+    caption: p.caption || '',
+    showCaption: !!p.showCaption,
+    captionFont: p.captionFont || 'sans',
+    captionSize: p.captionSize || 'md',
+    captionBg: p.captionBg || 'gradient',
+    ...extra,
   }
 }
 
@@ -50,7 +57,9 @@ function layoutCollage(photos, iw, ih, margin, gap, smartSize) {
   const n = photos.length
   if (!n) return []
   const ordered = orderedPhotos(photos, smartSize)
-  let cols = Math.max(2, Math.min(6, Math.round(Math.sqrt(n * (iw / ih)))))
+  const stageRatio = iw / ih
+  let cols = Math.round(Math.sqrt(n * stageRatio))
+  cols = Math.max(2, Math.min(6, cols))
   if (n <= 4) cols = Math.min(cols, 2)
   if (n <= 6) cols = Math.min(cols, 3)
   const colW = (iw - gap * (cols - 1)) / cols
@@ -58,7 +67,8 @@ function layoutCollage(photos, iw, ih, margin, gap, smartSize) {
   const result = []
   ordered.forEach((p, idx) => {
     const span = (smartSize && p.pixels > 2e6 && idx < n * 0.35) ? Math.min(2, cols) : 1
-    let bestCol = 0, bestY = Infinity
+    let bestCol = 0
+    let bestY = Infinity
     for (let c = 0; c <= cols - span; c++) {
       let y = 0
       for (let k = 0; k < span; k++) y = Math.max(y, colBottoms[c + k])
@@ -162,7 +172,7 @@ function layoutRadial(photos, iw, ih, margin, gap, smartSize) {
   const result = [baseCell(ordered[0], margin + (iw - centerSize) / 2, margin + (ih - centerSize) / 2, centerSize, centerSize)]
   const ring = Math.min(iw, ih) * 0.38
   ordered.slice(1).forEach((p, i) => {
-    const angle = (i / (n - 1)) * Math.PI * 2 - Math.PI / 2
+    const angle = (i / Math.max(1, n - 1)) * Math.PI * 2 - Math.PI / 2
     const size = Math.min(iw, ih) * (smartSize ? 0.14 + 0.08 * (p.pixels / (ordered[0].pixels || 1)) : 0.18)
     result.push(baseCell(p,
       margin + iw / 2 + Math.cos(angle) * ring - size / 2,
@@ -172,17 +182,109 @@ function layoutRadial(photos, iw, ih, margin, gap, smartSize) {
   return result
 }
 
-export function buildLayout(type, photos, stageW, stageH, margin, gap, smartSize, existingCells = null) {
+function layoutGridDense(photos, iw, ih, margin, gap, smartSize, density) {
+  const n = photos.length
+  if (!n) return []
+  const ordered = orderedPhotos(photos, smartSize)
+  const targetSlots = Math.max(n, Math.ceil(n / density))
+  let cols = Math.ceil(Math.sqrt(targetSlots * (iw / Math.max(1, ih))))
+  cols = Math.max(1, Math.min(8, cols))
+  if (density < 0.85) cols = Math.max(cols, Math.min(6, cols + 1))
+  const rows = Math.ceil(n / cols)
+  const cellW = (iw - gap * (cols - 1)) / cols
+  const cellH = (ih - gap * (rows - 1)) / rows
+  return ordered.map((p, i) => {
+    const col = i % cols
+    const row = Math.floor(i / cols)
+    return baseCell(p, margin + col * (cellW + gap), margin + row * (cellH + gap), cellW, cellH)
+  })
+}
+
+function layoutCollageDense(photos, iw, ih, margin, gap, smartSize, density) {
+  const n = photos.length
+  if (!n) return []
+  const ordered = orderedPhotos(photos, smartSize)
+  const stageRatio = iw / Math.max(1, ih)
+  let cols = Math.round(Math.sqrt(Math.max(n, n / density) * stageRatio))
+  cols = Math.max(2, Math.min(7, cols))
+  if (n <= 3 && density < 0.9) cols = Math.max(cols, 3)
+  if (n <= 2 && density < 0.8) cols = Math.max(cols, 3)
+  if (n <= 6) cols = Math.min(cols, density < 0.85 ? 4 : 3)
+  const colW = (iw - gap * (cols - 1)) / cols
+  const colBottoms = new Array(cols).fill(0)
+  const result = []
+  ordered.forEach((p, idx) => {
+    const span = (smartSize && p.pixels > 2e6 && idx < n * 0.35 && density > 0.85) ? Math.min(2, cols) : 1
+    let bestCol = 0
+    let bestY = Infinity
+    for (let c = 0; c <= cols - span; c++) {
+      let y = 0
+      for (let k = 0; k < span; k++) y = Math.max(y, colBottoms[c + k])
+      if (y < bestY) { bestY = y; bestCol = c }
+    }
+    const photoRatio = p.w / Math.max(1, p.h)
+    let cellH = (colW * span + gap * (span - 1)) / Math.max(0.6, Math.min(1.8, photoRatio))
+    if (smartSize && p.pixels > 2.5e6) cellH *= 1.1
+    cellH = Math.max(50, Math.min(ih * (0.35 + 0.2 * density), cellH * (0.55 + 0.45 * density)))
+    if (bestY + cellH > ih) cellH = Math.max(50, ih - bestY)
+    const cellW = colW * span + gap * (span - 1)
+    result.push(baseCell(p, margin + bestCol * (colW + gap), margin + bestY, cellW, cellH))
+    for (let k = 0; k < span; k++) colBottoms[bestCol + k] = bestY + cellH + gap
+  })
+  return result
+}
+
+function shrinkAndPack(cells, stageW, stageH, margin, gap, density) {
+  const d = Math.max(0.4, Math.min(1, density))
+  if (d >= 0.999) return cells
+  const maxX = stageW - margin
+  let x = margin
+  let y = margin
+  let rowH = 0
+  return cells.map((c) => {
+    const nw = Math.max(40, c.w * d)
+    const nh = Math.max(40, c.h * d)
+    if (x + nw > maxX && x > margin) {
+      x = margin
+      y += rowH + gap
+      rowH = 0
+    }
+    const out = { ...c, w: nw, h: nh, x, y }
+    x += nw + gap
+    rowH = Math.max(rowH, nh)
+    return out
+  })
+}
+
+/**
+ * density (0.4–1): lower = smaller frames, denser re-layout, room for more photos on same canvas.
+ * Does NOT add a uniform empty border around the whole collage.
+ */
+export function buildLayout(type, photos, stageW, stageH, margin, gap, smartSize, existingCells = null, density = 1) {
+  const d = Math.max(0.4, Math.min(1, density == null ? 1 : density))
   const iw = stageW - margin * 2
   const ih = stageH - margin * 2
   if (type === 'freeform' && existingCells && existingCells.length === photos.length) {
     return existingCells.map((c) => ({ ...c }))
   }
-  if (type === 'grid') return layoutGrid(photos, iw, ih, margin, gap, smartSize)
-  if (type === 'masonry') return layoutMasonry(photos, iw, ih, margin, gap, smartSize)
-  if (type === 'mosaic') return layoutMosaic(photos, iw, ih, margin, gap, smartSize)
-  if (type === 'polaroid') return layoutPolaroid(photos, iw, ih, margin, gap, smartSize)
-  if (type === 'radial') return layoutRadial(photos, iw, ih, margin, gap, smartSize)
-  if (type === 'freeform') return layoutCollage(photos, iw, ih, margin, gap, smartSize)
-  return layoutCollage(photos, iw, ih, margin, gap, smartSize)
+
+  let cells
+  if (type === 'grid') {
+    cells = layoutGridDense(photos, iw, ih, margin, gap, smartSize, d)
+  } else if (type === 'masonry') {
+    cells = layoutMasonry(photos, iw, ih, margin, gap, smartSize)
+  } else if (type === 'mosaic') {
+    cells = layoutMosaic(photos, iw, ih, margin, gap, smartSize)
+  } else if (type === 'polaroid') {
+    cells = layoutPolaroid(photos, iw, ih, margin, gap, smartSize)
+  } else if (type === 'radial') {
+    cells = layoutRadial(photos, iw, ih, margin, gap, smartSize)
+  } else {
+    cells = layoutCollageDense(photos, iw, ih, margin, gap, smartSize, d)
+  }
+
+  if (d < 0.999 && type !== 'radial' && type !== 'polaroid') {
+    cells = shrinkAndPack(cells, stageW, stageH, margin, gap, d)
+  }
+  return cells
 }
