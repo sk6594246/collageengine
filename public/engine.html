@@ -11,7 +11,10 @@
 (async function () {
   try {
     const parts = await Promise.all(
-      [1,2,3,4].map(i => fetch("./engine-data-" + i + ".txt").then(r => r.text()))
+      [1,2,3,4,5,6,7,8].map(i => fetch("./engine-data-" + i + ".txt").then(r => {
+        if (!r.ok) throw new Error("missing engine-data-" + i + ".txt (" + r.status + ")");
+        return r.text();
+      }))
     );
     const b64 = parts.join("").trim();
     const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
@@ -22,8 +25,10 @@
     document.write(html);
     document.close();
   } catch (e) {
-    document.getElementById("msg").textContent =
-      "Could not load engine: " + e + " — open local index.html for full features.";
+    document.getElementById("msg").innerHTML =
+      "Could not load full engine: <code>" + e + "</code><br><br>" +
+      "Until payload finishes deploying, open the local file:<br>" +
+      "<strong>artifacts/Collage-Engine/index.html</strong>";
     console.error(e);
   }
 })();
