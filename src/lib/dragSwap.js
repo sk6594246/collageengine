@@ -1,4 +1,6 @@
-/** Reliable photo swap on drag-drop between cells */
+/** Reliable photo swap on drag-drop between cells + pan with relative crop memory */
+import { saveCropToMemory } from './crop'
+
 export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef }) {
   if (e.button !== 0) return
   e.preventDefault()
@@ -31,9 +33,20 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
     const dx = ev.clientX - d.startX
     const dy = ev.clientY - d.startY
     if (d.type === 'pan') {
-      setCells((prev) => prev.map((c) => (c.id === d.id ? { ...c, ox: d.origOx + dx, oy: d.origOy + dy } : c)))
+      setCells((prev) =>
+        prev.map((c) => {
+          if (c.id !== d.id) return c
+          const ox = d.origOx + dx
+          const oy = d.origOy + dy
+          const w = Math.max(1, c.w)
+          const h = Math.max(1, c.h)
+          return { ...c, ox, oy, oxRel: ox / w, oyRel: oy / h }
+        }),
+      )
     } else {
-      setCells((prev) => prev.map((c) => (c.id === d.id ? { ...c, x: Math.max(0, d.origX + dx), y: Math.max(0, d.origY + dy) } : c)))
+      setCells((prev) =>
+        prev.map((c) => (c.id === d.id ? { ...c, x: Math.max(0, d.origX + dx), y: Math.max(0, d.origY + dy) } : c)),
+      )
     }
   }
   const onUp = (ev) => {
@@ -49,7 +62,7 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
     if (d.type === 'pan') {
       setCells((prev) => {
         const c = prev.find((x) => x.id === d.id)
-        if (c) cropMemory.current.set(c.photoId, { scale: c.scale || 1, ox: c.ox || 0, oy: c.oy || 0 })
+        if (c) saveCropToMemory(c, cropMemory)
         return prev
       })
       return
@@ -62,7 +75,10 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
       const cellEl = node.closest?.('.cell')
       if (!cellEl) continue
       const id = cellEl.getAttribute('data-id')
-      if (id && id !== d.id) { targetId = id; break }
+      if (id && id !== d.id) {
+        targetId = id
+        break
+      }
     }
     if (!targetId) return
     setCells((prev) => {
@@ -70,9 +86,18 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
       const target = prev.find((c) => c.id === targetId)
       if (!source || !target) return prev
       const take = (c) => ({
-        photoId: c.photoId, scale: c.scale || 1, ox: c.ox || 0, oy: c.oy || 0, rotate: c.rotate || 0,
-        caption: c.caption || '', showCaption: !!c.showCaption,
-        captionFont: c.captionFont || 'sans', captionSize: c.captionSize || 'md', captionBg: c.captionBg || 'gradient',
+        photoId: c.photoId,
+        scale: c.scale || 1,
+        ox: c.ox || 0,
+        oy: c.oy || 0,
+        oxRel: c.oxRel,
+        oyRel: c.oyRel,
+        rotate: c.rotate || 0,
+        caption: c.caption || '',
+        showCaption: !!c.showCaption,
+        captionFont: c.captionFont || 'sans',
+        captionSize: c.captionSize || 'md',
+        captionBg: c.captionBg || 'gradient',
       })
       const s = take(source)
       const t = take(target)
