@@ -1,1 +1,33 @@
-LOADER_PLACEHOLDER
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Frame — loading…</title>
+</head>
+<body>
+<p id="msg" style="font-family:system-ui;padding:2rem;color:#666">Loading full Family Frame engine…</p>
+<script>
+(async function () {
+  try {
+    const [a, b] = await Promise.all([
+      fetch("./engine-data-1.txt").then(r => r.text()),
+      fetch("./engine-data-2.txt").then(r => r.text()),
+    ]);
+    const b64 = (a + b).trim();
+    const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const ds = new DecompressionStream("gzip");
+    const stream = new Blob([bin]).stream().pipeThrough(ds);
+    const html = await new Response(stream).text();
+    document.open();
+    document.write(html);
+    document.close();
+  } catch (e) {
+    document.getElementById("msg").textContent =
+      "Could not load engine: " + e + " — use local index.html for offline full features.";
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
