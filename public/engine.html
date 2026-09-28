@@ -10,11 +10,10 @@
 <script>
 (async function () {
   try {
-    const [a, b] = await Promise.all([
-      fetch("./engine-data-1.txt").then(r => r.text()),
-      fetch("./engine-data-2.txt").then(r => r.text()),
-    ]);
-    const b64 = (a + b).trim();
+    const parts = await Promise.all(
+      [1,2,3,4].map(i => fetch("./engine-data-" + i + ".txt").then(r => r.text()))
+    );
+    const b64 = parts.join("").trim();
     const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     const ds = new DecompressionStream("gzip");
     const stream = new Blob([bin]).stream().pipeThrough(ds);
@@ -24,7 +23,7 @@
     document.close();
   } catch (e) {
     document.getElementById("msg").textContent =
-      "Could not load engine: " + e + " — use local index.html for offline full features.";
+      "Could not load engine: " + e + " — open local index.html for full features.";
     console.error(e);
   }
 })();
