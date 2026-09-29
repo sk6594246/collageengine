@@ -1,4 +1,4 @@
-/** Layout helpers for Family Frame — density-aware so more photos fit same canvas */
+/** Layout helpers for Family Frame — parity with vanilla engine */
 import { uid } from './storage'
 
 export function qualityLabel(pixels) {
@@ -28,7 +28,11 @@ function baseCell(p, x, y, w, h, extra = {}) {
     x, y, w, h,
     scale: 1, ox: 0, oy: 0, oxRel: 0, oyRel: 0,
     rotate: 0,
-    lockAspect: false,
+    lockAspect: !!p.lockAspect,
+    frameAspect: p.frameAspect || 'free',
+    frameAspectW: p.frameAspectW,
+    frameAspectH: p.frameAspectH,
+    aspectRatio: p.aspectRatio,
     caption: p.caption || '',
     showCaption: !!p.showCaption,
     captionFont: p.captionFont || 'sans',
