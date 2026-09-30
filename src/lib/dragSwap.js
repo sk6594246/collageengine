@@ -39,7 +39,6 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
           const w = Math.max(1, c.w)
           const h = Math.max(1, c.h)
           const sc = Math.max(1, c.scale || 1)
-          // scale 1 → no pan (would show gray bars); zoomed → clamp pan
           let ox = d.origOx + dx
           let oy = d.origOy + dy
           if (sc <= 1) {
