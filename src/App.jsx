@@ -1,1 +1,1 @@
-PLACEHOLDER_DO_NOT_USE
+export { default } from './AppMain.jsx'
