@@ -36,11 +36,22 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
       setCells((prev) =>
         prev.map((c) => {
           if (c.id !== d.id) return c
-          const ox = d.origOx + dx
-          const oy = d.origOy + dy
           const w = Math.max(1, c.w)
           const h = Math.max(1, c.h)
-          return { ...c, ox, oy, oxRel: ox / w, oyRel: oy / h }
+          const sc = Math.max(1, c.scale || 1)
+          // scale 1 → no pan (would show gray bars); zoomed → clamp pan
+          let ox = d.origOx + dx
+          let oy = d.origOy + dy
+          if (sc <= 1) {
+            ox = 0
+            oy = 0
+          } else {
+            const maxX = w * (sc - 1) * 0.5
+            const maxY = h * (sc - 1) * 0.5
+            ox = Math.max(-maxX, Math.min(maxX, ox))
+            oy = Math.max(-maxY, Math.min(maxY, oy))
+          }
+          return { ...c, ox, oy, oxRel: ox / w, oyRel: oy / h, scale: sc }
         }),
       )
     } else {
