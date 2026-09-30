@@ -62,9 +62,6 @@ export function saveCropToMemory(cell, cropMemory) {
   return { ...cell, ...entry }
 }
 
-/**
- * Cover dimensions: smallest size that fully covers the cell with the photo aspect.
- */
 export function coverSize(cellW, cellH, photoW, photoH) {
   const cw = Math.max(1, cellW)
   const ch = Math.max(1, cellH)
@@ -80,9 +77,6 @@ export function coverSize(cellW, cellH, photoW, photoH) {
   return { w, h }
 }
 
-/**
- * Clamp pan so the scaled cover image never leaves empty gaps in the cell.
- */
 export function clampPan(ox, oy, cellW, cellH, coverW, coverH, scale) {
   const sc = Math.max(1, scale || 1)
   const dw = coverW * sc
@@ -95,10 +89,6 @@ export function clampPan(ox, oy, cellW, cellH, coverW, coverH, scale) {
   }
 }
 
-/**
- * CSS style for the cell <img> so the photo always covers the frame.
- * Uses absolute sizing (not 100% + object-fit + translate%) to avoid gray bars.
- */
 export function imageStyleForCell(cell, photo) {
   const cellW = Math.max(1, cell.w || 1)
   const cellH = Math.max(1, cell.h || 1)
@@ -131,9 +121,6 @@ export function imageStyleForCell(cell, photo) {
   }
 }
 
-/**
- * Draw photo into a clipped cell rect on canvas (export) — same cover + pan + zoom math.
- */
 export function drawPhotoInCell(ctx, photo, cell, scaleFactor = 1) {
   if (!photo?.img) return
   const cellW = cell.w * scaleFactor
