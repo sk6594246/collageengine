@@ -3,7 +3,7 @@ import './App.css'
 import { deleteProject, listProjects, loadProject, saveProject, uid } from './lib/storage'
 import { qualityLabel, getAspectRatio, buildLayout } from './lib/layouts'
 import { beginCellDrag } from './lib/dragSwap'
-import { applyCropMemory, cropFromCell, saveCropToMemory } from './lib/crop'
+import { applyCropMemory, cropFromCell, saveCropToMemory, imageStyleForCell, drawPhotoInCell } from './lib/crop'
 
 const MAX_PHOTOS = 30
 
@@ -237,16 +237,7 @@ export default function App() {
       ctx.arcTo(-rw / 2, -rh / 2, rw / 2, -rh / 2, r)
       ctx.closePath()
       ctx.clip()
-      const imgRatio = photo.w / photo.h
-      const cellRatio = rw / rh
-      let dw, dh
-      if (imgRatio > cellRatio) { dh = rh; dw = dh * imgRatio }
-      else { dw = rw; dh = dw / imgRatio }
-      const sc = Math.max(1, cell.scale || 1)
-      dw *= sc; dh *= sc
-      const dx = -rw / 2 + (rw - dw) / 2 + (cell.ox || 0) * scale
-      const dy = -rh / 2 + (rh - dh) / 2 + (cell.oy || 0) * scale
-      ctx.drawImage(photo.img, dx, dy, dw, dh)
+      drawPhotoInCell(ctx, photo, cell, scale)
       if (cell.showCaption && cell.caption) {
         ctx.fillStyle = 'rgba(0,0,0,0.7)'
         ctx.fillRect(-rw / 2, rh / 2 - 28 * scale, rw, 28 * scale)
@@ -398,8 +389,6 @@ export default function App() {
               {cells.map((cell) => {
                 const photo = photos.find((p) => p.id === cell.photoId)
                 if (!photo) return null
-                const oxR = cell.oxRel != null ? cell.oxRel : (cell.ox || 0) / Math.max(1, cell.w)
-                const oyR = cell.oyRel != null ? cell.oyRel : (cell.oy || 0) / Math.max(1, cell.h)
                 return (
                   <div key={cell.id} className={`cell ${cell.id === selectedId ? 'selected' : ''}`} data-id={cell.id}
                     style={{ left: cell.x, top: cell.y, width: cell.w, height: cell.h, borderRadius: cellRadius, transform: cell.rotate ? `rotate(${cell.rotate}deg)` : undefined }}
@@ -407,12 +396,7 @@ export default function App() {
                     onPointerDown={(e) => onCellPointerDown(e, cell)}
                     onWheel={(e) => onCellWheel(e, cell)}>
                     <img src={photo.url} alt={photo.name} draggable={false}
-                      style={{
-                        width: '100%', height: '100%', objectFit: 'cover',
-                        transform: `translate(${oxR * 100}%, ${oyR * 100}%) scale(${Math.max(1, cell.scale || 1)})`,
-                        transformOrigin: 'center center',
-                        pointerEvents: 'none',
-                      }} />
+                      style={imageStyleForCell(cell, photo)} />
                   </div>
                 )
               })}
