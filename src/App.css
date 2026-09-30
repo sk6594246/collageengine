@@ -98,13 +98,13 @@ label {
 select, input[type="text"], input[type="number"], input[type="color"] {
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
   color: var(--text);
-  padding: 7px 10px;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   width: 100%;
 }
-select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
 
 .toggle-row {
   display: flex;
@@ -113,23 +113,14 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1
   gap: 10px;
 }
 .toggle {
-  position: relative;
-  width: 42px;
-  height: 24px;
-  background: var(--border);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background 0.2s;
-  flex-shrink: 0;
+  width: 40px; height: 22px; border-radius: 11px;
+  background: var(--border); position: relative; cursor: pointer;
+  transition: background 0.2s; flex-shrink: 0;
 }
-.toggle.on { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.toggle.on { background: var(--accent); }
 .toggle::after {
-  content: "";
-  position: absolute;
-  top: 3px; left: 3px;
-  width: 18px; height: 18px;
-  background: #fff;
-  border-radius: 50%;
+  content: ""; position: absolute; width: 16px; height: 16px;
+  border-radius: 50%; background: #fff; top: 3px; left: 3px;
   transition: transform 0.2s;
 }
 .toggle.on::after { transform: translateX(18px); }
@@ -137,77 +128,70 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1
 .upload-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
-  padding: 22px 14px;
+  padding: 18px 12px;
   text-align: center;
   cursor: pointer;
-  background: var(--bg);
   transition: border-color 0.2s, background 0.2s;
+  background: var(--bg);
 }
 .upload-zone:hover, .upload-zone.dragover {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
-.upload-zone strong { color: var(--text); display: block; }
-.upload-zone p { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+.upload-zone strong { display: block; font-size: 0.9rem; margin-bottom: 4px; }
+.upload-zone p { font-size: 0.75rem; color: var(--muted); }
 
 .photo-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
 .photo-item {
   display: flex; align-items: center; gap: 8px;
-  background: var(--bg); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem;
+  padding: 6px; border-radius: var(--radius-sm); background: var(--bg);
 }
 .photo-item img { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; }
-.photo-item .meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.photo-item button {
-  background: transparent; border: none; color: var(--muted); padding: 4px; box-shadow: none;
+.photo-item .meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; color: var(--muted); }
+.photo-item button { padding: 4px 8px; font-size: 0.75rem; }
+
+.selected-actions {
+  display: flex; flex-wrap: wrap; gap: 6px;
 }
-.photo-item button:hover { color: var(--danger); }
+.selected-actions button { font-size: 0.75rem; padding: 6px 10px; }
+.selected-actions button.secondary.on {
+  background: var(--accent); color: #1a1410; border-color: var(--accent);
+}
 
 .project-list { display: flex; flex-direction: column; gap: 6px; }
 .project-item {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--bg); border-radius: 8px; padding: 8px 10px;
-  border: 1px solid transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px; border-radius: var(--radius-sm); background: var(--bg);
+  cursor: pointer; border: 1px solid transparent;
 }
-.project-item:hover, .project-item.active { border-color: var(--accent); background: var(--accent-soft); }
-.project-item .name { flex: 1; font-size: 0.85rem; font-weight: 500; }
+.project-item:hover, .project-item.active { border-color: var(--accent); }
+.project-item .name { font-weight: 600; font-size: 0.85rem; }
 .project-item .meta { font-size: 0.7rem; color: var(--muted); }
-.project-item .del {
-  background: transparent; border: none; color: var(--muted); padding: 2px 6px; box-shadow: none;
-}
-.project-item .del:hover { color: var(--danger); }
-
-.selected-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-.selected-actions button { width: 100%; justify-content: center; font-size: 0.8rem; padding: 8px; }
-.selected-actions button.danger { grid-column: 1 / -1; }
+.project-item .del { padding: 2px 8px; font-size: 0.8rem; }
 
 .workspace {
   display: flex; flex-direction: column; min-height: 0; overflow: hidden;
-  background: #100e0c;
+  background: var(--bg);
 }
 .canvas-wrap {
   flex: 1; overflow: auto;
   display: flex; align-items: center; justify-content: center;
-  padding: 24px 16px;
-  background: radial-gradient(ellipse at center, rgba(40,34,28,0.6) 0%, transparent 70%), #100e0c;
+  padding: 16px;
 }
 .stage {
   position: relative;
-  background: #faf6f0;
   box-shadow: var(--stage-shadow);
-  overflow: hidden;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 .stage .empty {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  color: #8a8070; text-align: center; padding: 24px; pointer-events: none;
+  color: #8a8070; text-align: center; padding: 24px;
 }
 .stage .empty .icon {
-  width: 64px; height: 64px; border-radius: 18px;
-  background: linear-gradient(145deg, #f0e6d8, #e0d0b8);
+  width: 56px; height: 56px; border-radius: 16px;
+  background: var(--accent-soft);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.6rem; margin-bottom: 12px;
 }
@@ -222,8 +206,9 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1
   box-shadow: 0 0 0 4px var(--accent-soft); z-index: 10;
 }
 .cell img {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; pointer-events: none;
+  /* size + transform set per-cell in JS (cover + pan + zoom, no gray bars) */
+  pointer-events: none;
+  user-select: none;
 }
 .cell-caption {
   position: absolute; left: 0; right: 0; bottom: 0;
