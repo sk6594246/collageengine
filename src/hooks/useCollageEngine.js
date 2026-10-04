@@ -384,7 +384,7 @@ export function useCollageEngine() {
 
   const onCellPointerDown = (e, cell) => {
     const photo = photos.find((p) => p.id === cell.photoId)
-    beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef, photo })
+    beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef, photo, stageW, stageH, gap, margin })
   }
 
   const onCellWheel = (e, cell) => {
