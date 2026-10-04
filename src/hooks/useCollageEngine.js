@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { deleteProject, listProjects, loadProject, saveProject, uid } from '../lib/storage'
 import { getAspectRatio, buildLayout } from '../lib/layouts'
+import { packCells } from '../lib/pack'
 import { beginCellDrag } from '../lib/dragSwap'
 import { applyCropMemory, cropFromCell, saveCropToMemory, drawPhotoInCell } from '../lib/crop'
 import { applyFrameGeometry } from '../lib/frameAspect'
@@ -39,6 +40,7 @@ export function useCollageEngine() {
   const dragRef = useRef(null)
   const cellsRef = useRef([])
   const cropMemory = useRef(new Map())
+  const prevPhotoCount = useRef(0)
 
   useEffect(() => { cellsRef.current = cells }, [cells])
 
@@ -122,9 +124,19 @@ export function useCollageEngine() {
     return () => window.removeEventListener('resize', onResize)
   }, [computeStage])
 
+  // Rebuild only when layout *settings* change — not when a photo is removed
   useEffect(() => {
+    if (!photos.length) return
     rebuild()
-  }, [aspect, customW, customH, layoutType, gap, margin, smartSize, photos.length, layoutScalePct])
+  }, [aspect, customW, customH, layoutType, gap, margin, smartSize, layoutScalePct])
+
+  // New photos only (count goes up) → full layout once
+  useEffect(() => {
+    if (photos.length > prevPhotoCount.current) {
+      rebuild()
+    }
+    prevPhotoCount.current = photos.length
+  }, [photos.length])
 
   useEffect(() => {
     listProjects().then(setProjects).catch(() => {})
@@ -182,28 +194,33 @@ export function useCollageEngine() {
 
   const updateSelected = (patch) => {
     if (!selectedId) return
-    setCells((prev) =>
-      prev.map((c) => {
+    const geomKeys = ['x', 'y', 'w', 'h', 'frameAspect', 'frameAspectW', 'frameAspectH']
+    const hasGeom = geomKeys.some((k) => k in patch)
+    const shouldReflow = hasGeom && ('w' in patch || 'h' in patch || 'frameAspect' in patch)
+    setCells((prev) => {
+      let next = prev.map((c) => {
         if (c.id !== selectedId) return c
         const photo = photos.find((p) => p.id === c.photoId)
-        const geomKeys = ['x', 'y', 'w', 'h', 'frameAspect', 'frameAspectW', 'frameAspectH']
-        const hasGeom = geomKeys.some((k) => k in patch)
-        let next = hasGeom ? applyFrameGeometry(c, patch, photo) : { ...c, ...patch }
+        let cell = hasGeom ? applyFrameGeometry(c, patch, photo) : { ...c, ...patch }
         if ('ox' in patch || 'oy' in patch || 'scale' in patch) {
-          const w = Math.max(1, next.w)
-          const h = Math.max(1, next.h)
-          if ('ox' in patch) next.oxRel = (next.ox || 0) / w
-          if ('oy' in patch) next.oyRel = (next.oy || 0) / h
-          saveCropToMemory(next, cropMemory)
+          const w = Math.max(1, cell.w)
+          const h = Math.max(1, cell.h)
+          if ('ox' in patch) cell.oxRel = (cell.ox || 0) / w
+          if ('oy' in patch) cell.oyRel = (cell.oy || 0) / h
+          saveCropToMemory(cell, cropMemory)
         }
         if ('oxRel' in patch || 'oyRel' in patch) {
-          next = applyCropMemory(next, { ...cropFromCell(next), ...patch })
-          saveCropToMemory(next, cropMemory)
+          cell = applyCropMemory(cell, { ...cropFromCell(cell), ...patch })
+          saveCropToMemory(cell, cropMemory)
         }
-        if (hasGeom) saveCropToMemory(next, cropMemory)
-        return next
-      }),
-    )
+        if (hasGeom) saveCropToMemory(cell, cropMemory)
+        return cell
+      })
+      if (shouldReflow) {
+        next = packCells(next, stageW, stageH, gap, margin)
+      }
+      return next
+    })
   }
 
   const exportPNG = () => {
@@ -342,6 +359,7 @@ export function useCollageEngine() {
       setPhotos(loadedPhotos)
       setProjectId(data.id)
       setProjectName(data.name || 'My collage')
+      prevPhotoCount.current = (data.photos || []).length
       setTimeout(() => {
         if (data.cells?.length) setCells(data.cells.map((c) => ({ ...c, id: uid() })))
         else rebuild(loadedPhotos, s.layoutType || 'collage')
@@ -365,6 +383,7 @@ export function useCollageEngine() {
     setProjectName('My collage')
     setCaption('')
     setShowCaption(false)
+    prevPhotoCount.current = 0
     setView('studio')
   }
 
