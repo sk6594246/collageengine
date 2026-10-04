@@ -1,4 +1,5 @@
 import './App.css'
+import './zoom.css'
 import { useCollageEngine } from './hooks/useCollageEngine'
 import AppHeader from './components/AppHeader'
 import PhotoSidebar from './components/PhotoSidebar'
