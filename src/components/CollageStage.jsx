@@ -3,13 +3,24 @@ import { imageStyleForCell } from '../lib/crop'
 export default function CollageStage({
   wrapRef, stageW, stageH, bgColor, photos, cells, selectedId, setSelectedId,
   cellRadius, onCellPointerDown, onCellWheel, showCaption, caption, panMode,
+  viewZoom = 1, setCanvasZoom, zoomCanvasBy,
 }) {
   return (
     <div className="workspace">
       <div className="canvas-wrap" ref={wrapRef}>
         <div
+          className="stage-scale"
+          style={{ width: stageW * viewZoom, height: stageH * viewZoom }}
+        >
+        <div
           className="stage"
-          style={{ width: stageW, height: stageH, background: bgColor }}
+          style={{
+            width: stageW,
+            height: stageH,
+            background: bgColor,
+            transform: `scale(${viewZoom})`,
+            transformOrigin: 'top left',
+          }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedId(null)
           }}
@@ -84,13 +95,21 @@ export default function CollageStage({
           })}
           {showCaption && caption && <div className="global-caption">{caption}</div>}
         </div>
+        </div>
       </div>
       <div className="status-bar">
         <span>{photos.length ? `${photos.length} / 30 photos` : 'No photos yet'}</span>
         <span>{stageW} × {stageH} px</span>
+        <span className="canvas-zoom-controls" title="View zoom only — does not change export size">
+          <button type="button" className="zoom-btn" onClick={() => zoomCanvasBy?.(-0.1)} disabled={viewZoom <= 0.4} aria-label="Zoom out">−</button>
+          <button type="button" className="zoom-btn zoom-label" onClick={() => setCanvasZoom?.(1)} title="Reset to 100%">
+            {Math.round(viewZoom * 100)}%
+          </button>
+          <button type="button" className="zoom-btn" onClick={() => zoomCanvasBy?.(0.1)} disabled={viewZoom >= 1.5} aria-label="Zoom in">+</button>
+        </span>
         {panMode
-          ? <span className="frame-mode-flag">Frame mode ON · drag to crop · button to exit</span>
-          : <span className="status-hint">Select · drag to swap · Frame mode for crop</span>}
+          ? <span className="frame-mode-flag">Frame mode ON · drag to crop</span>
+          : <span className="status-hint">Select · drag · Frame mode · zoom for overview</span>}
       </div>
     </div>
   )

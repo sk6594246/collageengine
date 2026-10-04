@@ -98,6 +98,9 @@ export default function App() {
           showCaption={eng.showCaption}
           caption={eng.caption}
           panMode={eng.panMode}
+          viewZoom={eng.viewZoom}
+          setCanvasZoom={eng.setCanvasZoom}
+          zoomCanvasBy={eng.zoomCanvasBy}
         />
       </div>
     </div>
