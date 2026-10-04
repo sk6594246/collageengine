@@ -7,7 +7,6 @@ import { applyFrameGeometry } from '../lib/frameAspect'
 
 export const MAX_PHOTOS = 30
 
-/** All collage state + handlers — keeps App.jsx thin and push-friendly */
 export function useCollageEngine() {
   const [view, setView] = useState('studio')
   const [projects, setProjects] = useState([])
@@ -306,7 +305,7 @@ export function useCollageEngine() {
     } catch (e) {
       console.error(e)
       setStatus('Save failed')
-      alert('Could not save project. Photos may be too large for browser storage.')
+      alert('Could not save project.')
     }
   }
 
@@ -378,7 +377,8 @@ export function useCollageEngine() {
   }
 
   const onCellPointerDown = (e, cell) => {
-    beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef })
+    const photo = photos.find((p) => p.id === cell.photoId)
+    beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef, photo })
   }
 
   const onCellWheel = (e, cell) => {
