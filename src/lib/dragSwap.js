@@ -1,7 +1,11 @@
-/** Reliable photo swap on drag-drop between cells + pan with relative crop memory */
-import { saveCropToMemory } from './crop'
+/** Photo swap on drag-drop + pan with cover-aware clamp (Windows-style selective crop) */
+import { saveCropToMemory, coverSize, clampPan } from './crop'
 
-export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef }) {
+/**
+ * @param photo optional { w, h } for accurate pan limits at scale 1
+ *   (when photo aspect ≠ frame aspect, overflow exists even at scale 1)
+ */
+export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef, photo }) {
   if (e.button !== 0) return
   e.preventDefault()
   e.stopPropagation()
@@ -24,6 +28,8 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
     lastX: e.clientX,
     lastY: e.clientY,
     sourceEl,
+    photoW: photo?.w || photo?.img?.naturalWidth || 0,
+    photoH: photo?.h || photo?.img?.naturalHeight || 0,
   }
   const onMove = (ev) => {
     const d = dragRef.current
@@ -41,15 +47,13 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
           const sc = Math.max(1, c.scale || 1)
           let ox = d.origOx + dx
           let oy = d.origOy + dy
-          if (sc <= 1) {
-            ox = 0
-            oy = 0
-          } else {
-            const maxX = w * (sc - 1) * 0.5
-            const maxY = h * (sc - 1) * 0.5
-            ox = Math.max(-maxX, Math.min(maxX, ox))
-            oy = Math.max(-maxY, Math.min(maxY, oy))
-          }
+          // Cover overflow exists when photo aspect ≠ frame aspect — allow pan at scale 1
+          const pw = d.photoW || w
+          const ph = d.photoH || h
+          const { w: coverW, h: coverH } = coverSize(w, h, pw, ph)
+          const clamped = clampPan(ox, oy, w, h, coverW, coverH, sc)
+          ox = clamped.ox
+          oy = clamped.oy
           return { ...c, ox, oy, oxRel: ox / w, oyRel: oy / h, scale: sc }
         }),
       )
