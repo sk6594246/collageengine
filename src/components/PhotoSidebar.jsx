@@ -51,10 +51,21 @@ export default function PhotoSidebar({
       {selected && (
         <div className="control-group selected-card">
           <div className="section-title">Selected frame</div>
+          <button
+            type="button"
+            className={`frame-mode-btn ${panMode ? 'on' : ''}`}
+            onClick={() => setPanMode((v) => !v)}
+            aria-pressed={panMode}
+            title="Frame mode: drag to pan/crop inside the frame. Off = drag to swap photos."
+          >
+            {panMode ? '▣ Frame mode ON — drag to crop' : '☐ Frame mode — click to crop inside frame'}
+          </button>
+          <p className="hint" style={{ marginTop: 4 }}>
+            {panMode
+              ? 'Drag the photo to choose the region. Turn OFF to swap photos between frames.'
+              : 'Normal: click select · drag to swap. Turn Frame mode ON to pan/crop.'}
+          </p>
           <div className="selected-actions">
-            <button type="button" className={`secondary ${panMode ? 'on' : ''}`} onClick={() => setPanMode((v) => !v)} aria-pressed={panMode}>
-              {panMode ? 'Moving…' : 'Move photo'}
-            </button>
             <button type="button" className="secondary" onClick={() => updateSelected({ rotate: ((selected.rotate || 0) + 90) % 360 })}>Rotate</button>
             <button type="button" className="secondary" onClick={() => zoomSelected(0.15)}>＋ Zoom</button>
             <button type="button" className="secondary" onClick={() => zoomSelected(-0.15)}>－ Zoom</button>
@@ -63,11 +74,17 @@ export default function PhotoSidebar({
             <button type="button" className="secondary" onClick={replaceSelected}>Replace</button>
             <button type="button" className="secondary danger" onClick={() => selectedPhoto && removePhoto(selectedPhoto.id)}>Remove</button>
           </div>
-          <p className="hint">Drag onto another to <strong>swap</strong>. Move / wheel = crop. Scale ≥ 1 keeps the frame full.</p>
+          <p className="hint">
+            <strong>Selective crop:</strong> set Frame aspect (e.g. 16:9) → turn on <strong>Frame mode</strong> → drag to choose region.
+            Wheel zooms. Original stays in memory (lossless).
+          </p>
 
           <div className="section-title tight">Frame size &amp; position</div>
           <label>Frame aspect</label>
-          <select value={selected.frameAspect || 'free'} onChange={(e) => updateSelected({ frameAspect: e.target.value })}>
+          <select
+            value={selected.frameAspect || 'free'}
+            onChange={(e) => updateSelected({ frameAspect: e.target.value })}
+          >
             {FRAME_ASPECT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
