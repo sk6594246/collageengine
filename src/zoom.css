@@ -1,0 +1,31 @@
+/* Canvas view zoom (edit aid only) */
+.stage-scale {
+  flex-shrink: 0;
+  position: relative;
+}
+.canvas-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+.zoom-btn {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  min-width: 28px;
+  justify-content: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+}
+.zoom-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--panel-elevated);
+}
+.zoom-btn:disabled { opacity: 0.35; }
+.zoom-btn.zoom-label {
+  min-width: 48px;
+  font-weight: 650;
+  color: var(--accent);
+}

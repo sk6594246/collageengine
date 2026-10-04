@@ -35,6 +35,7 @@ export function useCollageEngine() {
   const [layoutScalePct, setLayoutScalePct] = useState(100)
   const [panMode, setPanMode] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [viewZoom, setViewZoom] = useState(1)
 
   const wrapRef = useRef(null)
   const fileRef = useRef(null)
@@ -112,8 +113,6 @@ export function useCollageEngine() {
     return () => window.removeEventListener('resize', onResize)
   }, [computeStage])
 
-  // Layout runs ONLY when user clicks Refresh layout (rebuild) — never auto.
-
   useEffect(() => {
     listProjects().then(setProjects).catch(() => {})
   }, [])
@@ -172,8 +171,6 @@ export function useCollageEngine() {
     if (!selectedId) return
     const geomKeys = ['x', 'y', 'w', 'h', 'frameAspect', 'frameAspectW', 'frameAspectH']
     const hasGeom = geomKeys.some((k) => k in patch)
-    // Resize keeps current x,y — packing here was snapping frames back to grid origin.
-    // Use Refresh layout when you want a full re-pack.
     setCells((prev) =>
       prev.map((c) => {
         if (c.id !== selectedId) return c
@@ -424,6 +421,12 @@ export function useCollageEngine() {
     input.click()
   }
 
+  const setCanvasZoom = (z) => {
+    const next = Math.round(Math.min(1.5, Math.max(0.4, z)) * 100) / 100
+    setViewZoom(next)
+  }
+  const zoomCanvasBy = (delta) => setCanvasZoom(viewZoom + delta)
+
   return {
     view, setView, projects, projectId, projectName, setProjectName,
     photos, cells, selectedId, setSelectedId, selected, selectedPhoto,
@@ -434,6 +437,7 @@ export function useCollageEngine() {
     caption, setCaption, showCaption, setShowCaption,
     stageW, stageH, status, layoutScalePct, setLayoutScalePct,
     panMode, setPanMode, mobileOpen, setMobileOpen,
+    viewZoom, setCanvasZoom, zoomCanvasBy,
     wrapRef, fileRef, cropMemory,
     rebuild, loadFiles, removePhoto, clearAll, updateSelected,
     exportPNG, handleSaveProject, handleLoadProject, handleNewProject, handleDeleteProject,
