@@ -40,7 +40,6 @@ export function useCollageEngine() {
   const dragRef = useRef(null)
   const cellsRef = useRef([])
   const cropMemory = useRef(new Map())
-  const prevPhotoCount = useRef(0)
 
   useEffect(() => { cellsRef.current = cells }, [cells])
 
@@ -115,6 +114,8 @@ export function useCollageEngine() {
       return cell
     })
     setCells(next)
+    setStatus('Layout refreshed')
+    setTimeout(() => setStatus(''), 2000)
   }, [photos, layoutType, margin, gap, smartSize, computeStage, layoutScalePct])
 
   useEffect(() => {
@@ -124,19 +125,7 @@ export function useCollageEngine() {
     return () => window.removeEventListener('resize', onResize)
   }, [computeStage])
 
-  // Rebuild only when layout *settings* change — not when a photo is removed
-  useEffect(() => {
-    if (!photos.length) return
-    rebuild()
-  }, [aspect, customW, customH, layoutType, gap, margin, smartSize, layoutScalePct])
-
-  // New photos only (count goes up) → full layout once
-  useEffect(() => {
-    if (photos.length > prevPhotoCount.current) {
-      rebuild()
-    }
-    prevPhotoCount.current = photos.length
-  }, [photos.length])
+  // Layout runs ONLY when user clicks Refresh layout (rebuild) — never auto.
 
   useEffect(() => {
     listProjects().then(setProjects).catch(() => {})
@@ -161,8 +150,8 @@ export function useCollageEngine() {
         loaded++
         if (loaded === files.length) {
           setPhotos((prev) => [...prev, ...next])
-          setStatus(`${next.length} photo${next.length > 1 ? 's' : ''} added`)
-          setTimeout(() => setStatus(''), 2000)
+          setStatus(`${next.length} added · click Refresh layout`)
+          setTimeout(() => setStatus(''), 4000)
         }
       }
       img.onerror = () => {
@@ -359,7 +348,6 @@ export function useCollageEngine() {
       setPhotos(loadedPhotos)
       setProjectId(data.id)
       setProjectName(data.name || 'My collage')
-      prevPhotoCount.current = (data.photos || []).length
       setTimeout(() => {
         if (data.cells?.length) setCells(data.cells.map((c) => ({ ...c, id: uid() })))
         else rebuild(loadedPhotos, s.layoutType || 'collage')
@@ -383,7 +371,6 @@ export function useCollageEngine() {
     setProjectName('My collage')
     setCaption('')
     setShowCaption(false)
-    prevPhotoCount.current = 0
     setView('studio')
   }
 
