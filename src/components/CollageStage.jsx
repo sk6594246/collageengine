@@ -39,8 +39,34 @@ export default function CollageStage({
                   borderRadius: cellRadius,
                   transform: cell.rotate ? `rotate(${cell.rotate}deg)` : undefined,
                 }}
-                onClick={(e) => { e.stopPropagation(); setSelectedId(cell.id) }}
-                onPointerDown={(e) => onCellPointerDown(e, cell)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedId(cell.id)
+                }}
+                onPointerDown={(e) => {
+                  const wrap = wrapRef?.current
+                  const st = wrap ? wrap.scrollTop : 0
+                  const sl = wrap ? wrap.scrollLeft : 0
+                  onCellPointerDown(e, cell)
+                  const restore = () => {
+                    if (!wrap) return
+                    wrap.scrollTop = st
+                    wrap.scrollLeft = sl
+                  }
+                  restore()
+                  requestAnimationFrame(restore)
+                  setTimeout(restore, 0)
+                }}
+                onFocus={(e) => {
+                  const wrap = wrapRef?.current
+                  if (!wrap) return
+                  const st = wrap.scrollTop
+                  const sl = wrap.scrollLeft
+                  requestAnimationFrame(() => {
+                    wrap.scrollTop = st
+                    wrap.scrollLeft = sl
+                  })
+                }}
                 onWheel={(e) => onCellWheel(e, cell)}
                 role="button"
                 tabIndex={0}
