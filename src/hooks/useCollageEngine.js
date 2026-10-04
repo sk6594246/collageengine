@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { deleteProject, listProjects, loadProject, saveProject, uid } from '../lib/storage'
 import { getAspectRatio, buildLayout } from '../lib/layouts'
 import { packCells } from '../lib/pack'
+import { refreshKeepSizes, snapshotCellMeta, mergeMetaOntoCells } from '../lib/refreshLayout'
 import { beginCellDrag } from '../lib/dragSwap'
 import { applyCropMemory, cropFromCell, saveCropToMemory, drawPhotoInCell } from '../lib/crop'
 import { applyFrameGeometry } from '../lib/frameAspect'
@@ -75,44 +76,30 @@ export function useCollageEngine() {
       setCells([])
       return
     }
-    const prevByPhoto = {}
-    cellsRef.current.forEach((c) => {
-      const crop = cropFromCell(c)
-      prevByPhoto[c.photoId] = {
-        caption: c.caption, showCaption: c.showCaption,
-        captionFont: c.captionFont, captionSize: c.captionSize, captionBg: c.captionBg,
-        frameAspect: c.frameAspect || 'free',
-        frameAspectW: c.frameAspectW, frameAspectH: c.frameAspectH,
-        aspectRatio: c.aspectRatio, lockAspect: !!c.lockAspect,
-        ...crop,
-      }
-      cropMemory.current.set(c.photoId, crop)
-    })
+    const prevByPhoto = snapshotCellMeta(cellsRef.current, cropMemory)
+    const existing = cellsRef.current
+
+    if (existing.length) {
+      const density = Math.max(0.4, Math.min(1, (scalePct || 100) / 100))
+      const next = refreshKeepSizes(
+        existing,
+        photoList,
+        w,
+        h,
+        gap,
+        margin,
+        (missing) => buildLayout(type, missing, w, h, margin, gap, smartSize, null, density),
+      )
+      setCells(next || existing)
+      setStatus('Layout refreshed · sizes kept')
+      setTimeout(() => setStatus(''), 2000)
+      return
+    }
+
     const enriched = photoList.map((p) => ({ ...p, ...(prevByPhoto[p.id] || {}) }))
     const density = Math.max(0.4, Math.min(1, (scalePct || 100) / 100))
     let next = buildLayout(type, enriched, w, h, margin, gap, smartSize, null, density)
-    next = next.map((c) => {
-      const prev = prevByPhoto[c.photoId]
-      const mem = cropMemory.current.get(c.photoId)
-      let cell = { ...c }
-      if (prev) {
-        cell = {
-          ...cell,
-          caption: prev.caption || '',
-          showCaption: !!prev.showCaption,
-          captionFont: prev.captionFont || 'sans',
-          captionSize: prev.captionSize || 'md',
-          captionBg: prev.captionBg || 'gradient',
-          frameAspect: prev.frameAspect || 'free',
-          frameAspectW: prev.frameAspectW,
-          frameAspectH: prev.frameAspectH,
-          aspectRatio: prev.aspectRatio,
-          lockAspect: !!prev.lockAspect,
-        }
-      }
-      cell = applyCropMemory(cell, mem || prev)
-      return cell
-    })
+    next = mergeMetaOntoCells(next, prevByPhoto, cropMemory)
     setCells(next)
     setStatus('Layout refreshed')
     setTimeout(() => setStatus(''), 2000)
