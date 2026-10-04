@@ -27,8 +27,8 @@ export default function AppHeader({
         >
           {view === 'projects' ? '← Studio' : 'Projects'}
         </button>
-        <button type="button" className="secondary" onClick={() => rebuild()} disabled={!photos.length} title="Shuffle layout">
-          ↻ Shuffle
+        <button type="button" className="secondary" onClick={() => rebuild()} disabled={!photos.length} title="Rebuild the grid from current layout settings">
+          ↻ Refresh layout
         </button>
         <button type="button" className="secondary" onClick={handleSaveProject} disabled={!photos.length}>
           💾 Save
