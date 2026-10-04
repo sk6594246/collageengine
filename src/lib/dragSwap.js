@@ -1,9 +1,10 @@
 /** Photo swap on drag-drop + pan with cover-aware clamp (Windows-style selective crop) */
 import { saveCropToMemory, coverSize, clampPan } from './crop'
 
+const DRAG_THRESHOLD = 6 // px — below this = click select only (keeps selection for Frame mode button)
+
 /**
  * @param photo optional { w, h } for accurate pan limits at scale 1
- *   (when photo aspect ≠ frame aspect, overflow exists even at scale 1)
  */
 export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef, photo }) {
   if (e.button !== 0) return
@@ -12,10 +13,6 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
   setSelectedId(cell.id)
   const isPan = panMode || e.shiftKey
   const sourceEl = e.currentTarget
-  if (!isPan && sourceEl) {
-    sourceEl.style.pointerEvents = 'none'
-    sourceEl.style.opacity = '0.55'
-  }
   dragRef.current = {
     id: cell.id,
     type: isPan ? 'pan' : 'drag',
@@ -28,6 +25,7 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
     lastX: e.clientX,
     lastY: e.clientY,
     sourceEl,
+    moved: false,
     photoW: photo?.w || photo?.img?.naturalWidth || 0,
     photoH: photo?.h || photo?.img?.naturalHeight || 0,
   }
@@ -38,6 +36,13 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
     d.lastY = ev.clientY
     const dx = ev.clientX - d.startX
     const dy = ev.clientY - d.startY
+    if (!d.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD) {
+      d.moved = true
+      if (d.type === 'drag' && d.sourceEl) {
+        d.sourceEl.style.pointerEvents = 'none'
+        d.sourceEl.style.opacity = '0.55'
+      }
+    }
     if (d.type === 'pan') {
       setCells((prev) =>
         prev.map((c) => {
@@ -47,7 +52,6 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
           const sc = Math.max(1, c.scale || 1)
           let ox = d.origOx + dx
           let oy = d.origOy + dy
-          // Cover overflow exists when photo aspect ≠ frame aspect — allow pan at scale 1
           const pw = d.photoW || w
           const ph = d.photoH || h
           const { w: coverW, h: coverH } = coverSize(w, h, pw, ph)
@@ -57,7 +61,7 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
           return { ...c, ox, oy, oxRel: ox / w, oyRel: oy / h, scale: sc }
         }),
       )
-    } else {
+    } else if (d.moved) {
       setCells((prev) =>
         prev.map((c) => (c.id === d.id ? { ...c, x: Math.max(0, d.origX + dx), y: Math.max(0, d.origY + dy) } : c)),
       )
@@ -73,6 +77,7 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
       d.sourceEl.style.pointerEvents = ''
       d.sourceEl.style.opacity = ''
     }
+    setSelectedId(d.id)
     if (d.type === 'pan') {
       setCells((prev) => {
         const c = prev.find((x) => x.id === d.id)
@@ -81,6 +86,7 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
       })
       return
     }
+    if (!d.moved) return
     const x = ev.clientX ?? d.lastX
     const y = ev.clientY ?? d.lastY
     const stack = (document.elementsFromPoint?.(x, y) || [document.elementFromPoint(x, y)]).filter(Boolean)
@@ -94,7 +100,12 @@ export function beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropM
         break
       }
     }
-    if (!targetId) return
+    if (!targetId) {
+      setCells((prev) =>
+        prev.map((c) => (c.id === d.id ? { ...c, x: d.origX, y: d.origY } : c)),
+      )
+      return
+    }
     setCells((prev) => {
       const source = prev.find((c) => c.id === d.id)
       const target = prev.find((c) => c.id === targetId)

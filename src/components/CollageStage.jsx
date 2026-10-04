@@ -10,7 +10,9 @@ export default function CollageStage({
         <div
           className="stage"
           style={{ width: stageW, height: stageH, background: bgColor }}
-          onClick={() => setSelectedId(null)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedId(null)
+          }}
           role="img"
           aria-label="Collage canvas"
         >
