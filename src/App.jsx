@@ -5,10 +5,6 @@ import PhotoSidebar from './components/PhotoSidebar'
 import CollageStage from './components/CollageStage'
 import ProjectsPanel from './components/ProjectsPanel'
 
-/**
- * Family Frame — thin shell. Logic in useCollageEngine; UI in components.
- * Split so each file stays small enough to push via GitHub connector.
- */
 export default function App() {
   const eng = useCollageEngine()
   const themeClass = eng.theme === 'none' ? '' : `theme-${eng.theme}`
@@ -101,6 +97,7 @@ export default function App() {
           onCellWheel={eng.onCellWheel}
           showCaption={eng.showCaption}
           caption={eng.caption}
+          panMode={eng.panMode}
         />
       </div>
     </div>

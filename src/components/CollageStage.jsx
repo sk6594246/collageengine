@@ -2,7 +2,7 @@ import { imageStyleForCell } from '../lib/crop'
 
 export default function CollageStage({
   wrapRef, stageW, stageH, bgColor, photos, cells, selectedId, setSelectedId,
-  cellRadius, onCellPointerDown, onCellWheel, showCaption, caption,
+  cellRadius, onCellPointerDown, onCellWheel, showCaption, caption, panMode,
 }) {
   return (
     <div className="workspace">
@@ -27,7 +27,7 @@ export default function CollageStage({
             return (
               <div
                 key={cell.id}
-                className={`cell ${cell.id === selectedId ? 'selected' : ''}`}
+                className={`cell ${cell.id === selectedId ? 'selected' : ''} ${panMode && cell.id === selectedId ? 'frame-mode-active' : ''}`}
                 data-id={cell.id}
                 style={{
                   left: cell.x,
@@ -60,7 +60,9 @@ export default function CollageStage({
       <div className="status-bar">
         <span>{photos.length ? `${photos.length} / 30 photos` : 'No photos yet'}</span>
         <span>{stageW} × {stageH} px</span>
-        <span className="status-hint">Tap a frame · drag to swap · wheel to zoom</span>
+        {panMode
+          ? <span className="frame-mode-flag">Frame mode ON · drag to crop · button to exit</span>
+          : <span className="status-hint">Select · drag to swap · Frame mode for crop</span>}
       </div>
     </div>
   )
