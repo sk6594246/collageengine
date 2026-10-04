@@ -172,9 +172,10 @@ export function useCollageEngine() {
     if (!selectedId) return
     const geomKeys = ['x', 'y', 'w', 'h', 'frameAspect', 'frameAspectW', 'frameAspectH']
     const hasGeom = geomKeys.some((k) => k in patch)
-    const shouldReflow = hasGeom && ('w' in patch || 'h' in patch || 'frameAspect' in patch)
-    setCells((prev) => {
-      let next = prev.map((c) => {
+    // Resize keeps current x,y — packing here was snapping frames back to grid origin.
+    // Use Refresh layout when you want a full re-pack.
+    setCells((prev) =>
+      prev.map((c) => {
         if (c.id !== selectedId) return c
         const photo = photos.find((p) => p.id === c.photoId)
         let cell = hasGeom ? applyFrameGeometry(c, patch, photo) : { ...c, ...patch }
@@ -191,12 +192,8 @@ export function useCollageEngine() {
         }
         if (hasGeom) saveCropToMemory(cell, cropMemory)
         return cell
-      })
-      if (shouldReflow) {
-        next = packCells(next, stageW, stageH, gap, margin)
-      }
-      return next
-    })
+      }),
+    )
   }
 
   const exportPNG = () => {
