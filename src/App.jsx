@@ -66,6 +66,11 @@ export default function App() {
               setSmartSize={eng.setSmartSize}
               layoutScalePct={eng.layoutScalePct}
               setLayoutScalePct={eng.setLayoutScalePct}
+              gap={eng.gap}
+              setGap={eng.setGap}
+              margin={eng.margin}
+              setMargin={eng.setMargin}
+              addPlaceholder={eng.addPlaceholder}
               bgColor={eng.bgColor}
               setBgColor={eng.setBgColor}
               theme={eng.theme}
