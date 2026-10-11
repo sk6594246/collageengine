@@ -1,18 +1,10 @@
-/** Photo swap on drag-drop + free reposition on empty drop + pan crop */
+/** Photo swap + free move + edge-align to other frames + group move + pan crop */
 import { saveCropToMemory, coverSize, clampPan } from './crop'
+import { snapFramePosition, nudgeAllCells } from './alignSnap'
 
-const DRAG_THRESHOLD = 6 // px — below this = click select only
+const DRAG_THRESHOLD = 6
+const EDGE_SNAP = 8
 
-function snapToGrid(value, gap, margin) {
-  const step = Math.max(1, gap || 6)
-  const origin = margin || 0
-  return origin + Math.round((value - origin) / step) * step
-}
-
-/**
- * @param photo optional { w, h } for pan limits
- * @param stageW/stageH/gap/margin for free-move bounds + grid snap
- */
 export function beginCellDrag(e, cell, {
   panMode, setSelectedId, setCells, cropMemory, dragRef, photo,
   stageW = 640, stageH = 640, gap = 6, margin = 12,
@@ -41,6 +33,7 @@ export function beginCellDrag(e, cell, {
     photoW: photo?.w || photo?.img?.naturalWidth || 0,
     photoH: photo?.h || photo?.img?.naturalHeight || 0,
   }
+
   const onMove = (ev) => {
     const d = dragRef.current
     if (!d) return
@@ -68,21 +61,20 @@ export function beginCellDrag(e, cell, {
           const ph = d.photoH || h
           const { w: coverW, h: coverH } = coverSize(w, h, pw, ph)
           const clamped = clampPan(ox, oy, w, h, coverW, coverH, sc)
-          ox = clamped.ox
-          oy = clamped.oy
-          return { ...c, ox, oy, oxRel: ox / w, oyRel: oy / h, scale: sc }
+          return { ...c, ox: clamped.ox, oy: clamped.oy, oxRel: clamped.ox / w, oyRel: clamped.oy / h, scale: sc }
         }),
       )
     } else if (d.moved) {
-      const maxX = Math.max(0, stageW - d.cellW)
-      const maxY = Math.max(0, stageH - d.cellH)
-      const nx = Math.max(0, Math.min(maxX, d.origX + dx))
-      const ny = Math.max(0, Math.min(maxY, d.origY + dy))
-      setCells((prev) =>
-        prev.map((c) => (c.id === d.id ? { ...c, x: nx, y: ny } : c)),
-      )
+      setCells((prev) => {
+        const others = prev.filter((c) => c.id !== d.id)
+        let nx = d.origX + dx
+        let ny = d.origY + dy
+        const snapped = snapFramePosition(nx, ny, d.cellW, d.cellH, others, stageW, stageH, EDGE_SNAP)
+        return prev.map((c) => (c.id === d.id ? { ...c, x: snapped.x, y: snapped.y } : c))
+      })
     }
   }
+
   const onUp = (ev) => {
     const d = dragRef.current
     dragRef.current = null
@@ -125,6 +117,8 @@ export function beginCellDrag(e, cell, {
         if (!source || !target) return prev
         const take = (c) => ({
           photoId: c.photoId,
+          isPlaceholder: !!c.isPlaceholder,
+          placeholderText: c.placeholderText || '',
           scale: c.scale || 1,
           ox: c.ox || 0,
           oy: c.oy || 0,
@@ -149,18 +143,67 @@ export function beginCellDrag(e, cell, {
       return
     }
 
-    const maxX = Math.max(0, stageW - d.cellW)
-    const maxY = Math.max(0, stageH - d.cellH)
-    let nx = d.origX + ((ev.clientX ?? d.lastX) - d.startX)
-    let ny = d.origY + ((ev.clientY ?? d.lastY) - d.startY)
-    nx = snapToGrid(nx, gap, margin)
-    ny = snapToGrid(ny, gap, margin)
-    nx = Math.max(0, Math.min(maxX, nx))
-    ny = Math.max(0, Math.min(maxY, ny))
-    setCells((prev) =>
-      prev.map((c) => (c.id === d.id ? { ...c, x: nx, y: ny } : c)),
-    )
+    setCells((prev) => {
+      const others = prev.filter((c) => c.id !== d.id)
+      let nx = d.origX + ((ev.clientX ?? d.lastX) - d.startX)
+      let ny = d.origY + ((ev.clientY ?? d.lastY) - d.startY)
+      const snapped = snapFramePosition(nx, ny, d.cellW, d.cellH, others, stageW, stageH, EDGE_SNAP)
+      return prev.map((c) => (c.id === d.id ? { ...c, x: snapped.x, y: snapped.y } : c))
+    })
   }
+
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
 }
+
+export function beginGroupDrag(e, { setCells, dragRef, stageW = 640, stageH = 640 }) {
+  if (e.button !== 0) return
+  if (e.target !== e.currentTarget) return
+  e.preventDefault()
+
+  dragRef.current = {
+    type: 'group',
+    startX: e.clientX,
+    startY: e.clientY,
+    moved: false,
+  }
+
+  setCells((prev) => {
+    dragRef.current.origins = prev.map((c) => ({ id: c.id, x: c.x, y: c.y, w: c.w, h: c.h }))
+    return prev
+  })
+
+  const onMove = (ev) => {
+    const d = dragRef.current
+    if (!d || d.type !== 'group') return
+    const dx = ev.clientX - d.startX
+    const dy = ev.clientY - d.startY
+    if (!d.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD) d.moved = true
+    if (!d.moved || !d.origins) return
+    setCells((prev) => {
+      const byId = Object.fromEntries(d.origins.map((o) => [o.id, o]))
+      return prev.map((c) => {
+        const o = byId[c.id]
+        if (!o) return c
+        const maxX = Math.max(0, stageW - (c.w || 0))
+        const maxY = Math.max(0, stageH - (c.h || 0))
+        return {
+          ...c,
+          x: Math.max(0, Math.min(maxX, o.x + dx)),
+          y: Math.max(0, Math.min(maxY, o.y + dy)),
+        }
+      })
+    })
+  }
+
+  const onUp = () => {
+    dragRef.current = null
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+  }
+
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+}
+
+export { nudgeAllCells }
