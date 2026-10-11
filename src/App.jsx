@@ -1,11 +1,15 @@
 import './App.css'
 import './zoom.css'
+import './placeholder.css'
 import { useCollageEngine } from './hooks/useCollageEngine'
 import AppHeader from './components/AppHeader'
 import PhotoSidebar from './components/PhotoSidebar'
 import CollageStage from './components/CollageStage'
 import ProjectsPanel from './components/ProjectsPanel'
 
+/**
+ * Family Frame — thin shell. Logic in useCollageEngine; UI in components.
+ */
 export default function App() {
   const eng = useCollageEngine()
   const themeClass = eng.theme === 'none' ? '' : `theme-${eng.theme}`
