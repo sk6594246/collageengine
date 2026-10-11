@@ -27,7 +27,7 @@ export default function CollageStage({
           role="img"
           aria-label="Collage canvas"
         >
-          {!photos.length && (
+          {!photos.length && !cells.length && (
             <div className="empty">
               <div className="icon" aria-hidden>📷</div>
               <h3>Start your family collage</h3>
@@ -35,12 +35,12 @@ export default function CollageStage({
             </div>
           )}
           {cells.map((cell) => {
-            const photo = photos.find((p) => p.id === cell.photoId)
-            if (!photo) return null
+            const photo = cell.photoId ? photos.find((p) => p.id === cell.photoId) : null
+            const isPh = !!cell.isPlaceholder || !photo
             return (
               <div
                 key={cell.id}
-                className={`cell ${cell.id === selectedId ? 'selected' : ''} ${panMode && cell.id === selectedId ? 'frame-mode-active' : ''}`}
+                className={`cell ${isPh ? 'placeholder' : ''} ${cell.id === selectedId ? 'selected' : ''} ${panMode && cell.id === selectedId ? 'frame-mode-active' : ''}`}
                 data-id={cell.id}
                 style={{
                   left: cell.x,
@@ -81,11 +81,18 @@ export default function CollageStage({
                 onWheel={(e) => onCellWheel(e, cell)}
                 role="button"
                 tabIndex={0}
-                aria-label={photo.name || 'Photo frame'}
+                aria-label={photo?.name || cell.placeholderText || 'Frame'}
                 aria-pressed={cell.id === selectedId}
               >
-                <img src={photo.url} alt={photo.name || ''} draggable={false} style={imageStyleForCell(cell, photo)} />
-                {cell.showCaption && cell.caption && (
+                {photo ? (
+                  <img src={photo.url} alt={photo.name || ''} draggable={false} style={imageStyleForCell(cell, photo)} />
+                ) : (
+                  <div className="placeholder-body">
+                    <span className="placeholder-icon" aria-hidden>▢</span>
+                    <span className="placeholder-label">{cell.placeholderText || cell.caption || 'Placeholder'}</span>
+                  </div>
+                )}
+                {cell.showCaption && cell.caption && photo && (
                   <div className={`cell-caption bg-${cell.captionBg || 'gradient'} size-${cell.captionSize || 'md'}`}>
                     {cell.caption}
                   </div>
@@ -98,7 +105,7 @@ export default function CollageStage({
         </div>
       </div>
       <div className="status-bar">
-        <span>{photos.length ? `${photos.length} / 30 photos` : 'No photos yet'}</span>
+        <span>{photos.length || cells.length ? `${photos.length} photos · ${cells.length} frames` : 'No photos yet'}</span>
         <span>{stageW} × {stageH} px</span>
         <span className="canvas-zoom-controls" title="View zoom only — does not change export size">
           <button type="button" className="zoom-btn" onClick={() => zoomCanvasBy?.(-0.1)} disabled={viewZoom <= 0.4} aria-label="Zoom out">−</button>
