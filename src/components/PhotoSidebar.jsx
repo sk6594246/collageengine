@@ -9,8 +9,10 @@ export default function PhotoSidebar({
   aspect, setAspect, customW, setCustomW, customH, setCustomH,
   layoutType, setLayoutType, smartSize, setSmartSize,
   layoutScalePct, setLayoutScalePct,
+  gap, setGap, margin, setMargin,
   bgColor, setBgColor, theme, setTheme, cellRadius, setCellRadius,
   caption, setCaption, showCaption, setShowCaption,
+  addPlaceholder,
 }) {
   return (
     <>
@@ -72,7 +74,17 @@ export default function PhotoSidebar({
             <button type="button" className="secondary" onClick={restoreCrop}>Restore crop</button>
             <button type="button" className="secondary" onClick={() => updateSelected({ scale: 1, ox: 0, oy: 0, oxRel: 0, oyRel: 0 })}>Reset view</button>
             <button type="button" className="secondary" onClick={replaceSelected}>Replace</button>
-            <button type="button" className="secondary danger" onClick={() => selectedPhoto && removePhoto(selectedPhoto.id)}>Remove</button>
+            <button
+              type="button"
+              className="secondary danger"
+              onClick={() => {
+                if (selected?.isPlaceholder || !selected?.photoId) {
+                  removePhoto(selected?.id, { cellOnly: true })
+                } else if (selectedPhoto) {
+                  removePhoto(selectedPhoto.id)
+                }
+              }}
+            >Remove</button>
           </div>
           <p className="hint">
             <strong>Selective crop:</strong> set Frame aspect (e.g. 16:9) → turn on <strong>Frame mode</strong> → drag to choose region.
@@ -108,6 +120,19 @@ export default function PhotoSidebar({
               : 'Free size — W and H independent.'}
             {selectedPhoto ? ` · Original ${selectedPhoto.w}×${selectedPhoto.h}` : ''}
           </p>
+
+          {selected.isPlaceholder && (
+            <>
+              <div className="section-title tight">Placeholder</div>
+              <input
+                type="text"
+                value={selected.placeholderText || ''}
+                placeholder="Label e.g. Photo TBA · Grandma"
+                onChange={(e) => updateSelected({ placeholderText: e.target.value, caption: e.target.value, showCaption: true })}
+              />
+              <p className="hint">Text shown in the empty frame. Use Replace to add a photo later.</p>
+            </>
+          )}
 
           <div className="section-title tight">Caption</div>
           <input type="text" value={selected.caption || ''} placeholder="e.g. Grandma · 1998" onChange={(e) => updateSelected({ caption: e.target.value })} />
@@ -165,6 +190,15 @@ export default function PhotoSidebar({
             <button type="button" className="secondary" onClick={() => setLayoutScalePct(75)}>75%</button>
             <button type="button" className="secondary" onClick={() => setLayoutScalePct(100)}>100%</button>
           </div>
+          <label>Gap (between frames) <span>{gap ?? 6}px</span></label>
+          <input type="range" min={0} max={40} step={1} value={gap ?? 6} onChange={(e) => setGap(+e.target.value)} />
+          <label>Margin (canvas edge) <span>{margin ?? 12}px</span></label>
+          <input type="range" min={0} max={48} step={1} value={margin ?? 12} onChange={(e) => setMargin(+e.target.value)} />
+          <p className="hint">Gap &amp; margin apply on Refresh layout / packing.</p>
+          <button type="button" className="secondary" style={{ width: '100%' }} onClick={() => addPlaceholder?.()}>
+            ＋ Blank placeholder
+          </button>
+          <p className="hint">Empty frame for text or a photo later. Move/resize like any frame.</p>
         </div>
       </details>
 
