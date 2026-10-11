@@ -13,6 +13,7 @@ export default function PhotoSidebar({
   bgColor, setBgColor, theme, setTheme, cellRadius, setCellRadius,
   caption, setCaption, showCaption, setShowCaption,
   addPlaceholder,
+  nudgeAll,
 }) {
   return (
     <>
@@ -199,6 +200,14 @@ export default function PhotoSidebar({
             ＋ Blank placeholder
           </button>
           <p className="hint">Empty frame for text or a photo later. Move/resize like any frame.</p>
+          <div className="section-title tight">Move all frames</div>
+          <div className="selected-actions nudge-all">
+            <button type="button" className="secondary" onClick={() => nudgeAll?.(0, -8)} title="Up">↑</button>
+            <button type="button" className="secondary" onClick={() => nudgeAll?.(0, 8)} title="Down">↓</button>
+            <button type="button" className="secondary" onClick={() => nudgeAll?.(-8, 0)} title="Left">←</button>
+            <button type="button" className="secondary" onClick={() => nudgeAll?.(8, 0)} title="Right">→</button>
+          </div>
+          <p className="hint">Or drag empty canvas area to slide the whole layout. Frames snap edges to each other (not canvas border).</p>
         </div>
       </details>
 
