@@ -3,7 +3,7 @@ import { deleteProject, listProjects, loadProject, saveProject, uid } from '../l
 import { getAspectRatio, buildLayout } from '../lib/layouts'
 import { packCells } from '../lib/pack'
 import { refreshKeepSizes, snapshotCellMeta, mergeMetaOntoCells } from '../lib/refreshLayout'
-import { beginCellDrag } from '../lib/dragSwap'
+import { beginCellDrag, beginGroupDrag, nudgeAllCells } from '../lib/dragSwap'
 import { applyCropMemory, cropFromCell, saveCropToMemory, drawPhotoInCell } from '../lib/crop'
 import { applyFrameGeometry } from '../lib/frameAspect'
 import { createPlaceholderCell } from '../lib/placeholderCell'
@@ -407,6 +407,14 @@ export function useCollageEngine() {
     beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef, photo, stageW, stageH, gap, margin })
   }
 
+  const onStagePointerDown = (e) => {
+    beginGroupDrag(e, { setCells, dragRef, stageW, stageH })
+  }
+
+  const nudgeAll = (dx, dy) => {
+    setCells((prev) => nudgeAllCells(prev, dx, dy, stageW, stageH))
+  }
+
   const onCellWheel = (e, cell) => {
     if (cell.id !== selectedId) return
     e.preventDefault()
@@ -494,6 +502,6 @@ export function useCollageEngine() {
     wrapRef, fileRef, cropMemory,
     rebuild, loadFiles, removePhoto, clearAll, addPlaceholder, updateSelected,
     exportPNG, handleSaveProject, handleLoadProject, handleNewProject, handleDeleteProject,
-    onCellPointerDown, onCellWheel, zoomSelected, restoreCrop, replaceSelected,
+    onCellPointerDown, onStagePointerDown, nudgeAll, onCellWheel, zoomSelected, restoreCrop, replaceSelected,
   }
 }
