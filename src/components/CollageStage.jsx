@@ -2,7 +2,7 @@ import { imageStyleForCell } from '../lib/crop'
 
 export default function CollageStage({
   wrapRef, stageW, stageH, bgColor, photos, cells, selectedId, setSelectedId,
-  cellRadius, onCellPointerDown, onCellWheel, showCaption, caption, panMode,
+  cellRadius, onCellPointerDown, onStagePointerDown, onCellWheel, showCaption, caption, panMode,
   viewZoom = 1, setCanvasZoom, zoomCanvasBy,
 }) {
   return (
@@ -14,18 +14,20 @@ export default function CollageStage({
         >
         <div
           className="stage"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedId(null)
+          }}
+          onPointerDown={(e) => onStagePointerDown?.(e)}
           style={{
             width: stageW,
             height: stageH,
             background: bgColor,
             transform: `scale(${viewZoom})`,
             transformOrigin: 'top left',
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedId(null)
+            cursor: 'grab',
           }}
           role="img"
-          aria-label="Collage canvas"
+          aria-label="Collage canvas — drag empty area to move all frames"
         >
           {!photos.length && !cells.length && (
             <div className="empty">
@@ -116,7 +118,7 @@ export default function CollageStage({
         </span>
         {panMode
           ? <span className="frame-mode-flag">Frame mode ON · drag to crop</span>
-          : <span className="status-hint">Select · drag · Frame mode · zoom for overview</span>}
+          : <span className="status-hint">Drag empty canvas to move all · edges snap to other frames</span>}
       </div>
     </div>
   )

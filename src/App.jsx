@@ -8,9 +8,6 @@ import PhotoSidebar from './components/PhotoSidebar'
 import CollageStage from './components/CollageStage'
 import ProjectsPanel from './components/ProjectsPanel'
 
-/**
- * Family Frame — thin shell. Logic in useCollageEngine; UI in components.
- */
 export default function App() {
   const eng = useCollageEngine()
   const themeClass = eng.theme === 'none' ? '' : `theme-${eng.theme}`
@@ -76,6 +73,7 @@ export default function App() {
               margin={eng.margin}
               setMargin={eng.setMargin}
               addPlaceholder={eng.addPlaceholder}
+              nudgeAll={eng.nudgeAll}
               bgColor={eng.bgColor}
               setBgColor={eng.setBgColor}
               theme={eng.theme}
@@ -105,6 +103,7 @@ export default function App() {
           setSelectedId={eng.setSelectedId}
           cellRadius={eng.cellRadius}
           onCellPointerDown={eng.onCellPointerDown}
+          onStagePointerDown={eng.onStagePointerDown}
           onCellWheel={eng.onCellWheel}
           showCaption={eng.showCaption}
           caption={eng.caption}
