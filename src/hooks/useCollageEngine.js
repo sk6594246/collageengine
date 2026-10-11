@@ -6,6 +6,7 @@ import { refreshKeepSizes, snapshotCellMeta, mergeMetaOntoCells } from '../lib/r
 import { beginCellDrag } from '../lib/dragSwap'
 import { applyCropMemory, cropFromCell, saveCropToMemory, drawPhotoInCell } from '../lib/crop'
 import { applyFrameGeometry } from '../lib/frameAspect'
+import { createPlaceholderCell } from '../lib/placeholderCell'
 
 export const MAX_PHOTOS = 30
 
@@ -79,16 +80,10 @@ export function useCollageEngine() {
     }
     const prevByPhoto = snapshotCellMeta(cellsRef.current, cropMemory)
     const existing = cellsRef.current
-
     if (existing.length) {
       const density = Math.max(0.4, Math.min(1, (scalePct || 100) / 100))
       const next = refreshKeepSizes(
-        existing,
-        photoList,
-        w,
-        h,
-        gap,
-        margin,
+        existing, photoList, w, h, gap, margin,
         (missing) => buildLayout(type, missing, w, h, margin, gap, smartSize, null, density),
       )
       setCells(next || existing)
@@ -96,7 +91,6 @@ export function useCollageEngine() {
       setTimeout(() => setStatus(''), 2000)
       return
     }
-
     const enriched = photoList.map((p) => ({ ...p, ...(prevByPhoto[p.id] || {}) }))
     const density = Math.max(0.4, Math.min(1, (scalePct || 100) / 100))
     let next = buildLayout(type, enriched, w, h, margin, gap, smartSize, null, density)
@@ -149,7 +143,12 @@ export function useCollageEngine() {
     })
   }
 
-  const removePhoto = (id) => {
+  const removePhoto = (id, opts = {}) => {
+    if (opts.cellOnly) {
+      setCells((prev) => prev.filter((c) => c.id !== id))
+      if (selectedId === id) setSelectedId(null)
+      return
+    }
     setPhotos((prev) => {
       const p = prev.find((x) => x.id === id)
       if (p?.url) URL.revokeObjectURL(p.url)
@@ -165,6 +164,14 @@ export function useCollageEngine() {
     setPhotos([])
     setCells([])
     setSelectedId(null)
+  }
+
+  const addPlaceholder = () => {
+    const cell = createPlaceholderCell(stageW, stageH, margin, cellsRef.current.length)
+    setCells((prev) => [...prev, cell])
+    setSelectedId(cell.id)
+    setStatus('Placeholder added')
+    setTimeout(() => setStatus(''), 2000)
   }
 
   const updateSelected = (patch) => {
@@ -194,7 +201,7 @@ export function useCollageEngine() {
   }
 
   const exportPNG = () => {
-    if (!photos.length) return
+    if (!photos.length && !cells.length) return
     const scale = 3
     const canvas = document.createElement('canvas')
     canvas.width = stageW * scale
@@ -203,9 +210,39 @@ export function useCollageEngine() {
     ctx.fillStyle = bgColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     cells.forEach((cell) => {
-      const photo = photos.find((p) => p.id === cell.photoId)
-      if (!photo?.img) return
+      const photo = cell.photoId ? photos.find((p) => p.id === cell.photoId) : null
       ctx.save()
+      if (!photo?.img) {
+        const cx = (cell.x + cell.w / 2) * scale
+        const cy = (cell.y + cell.h / 2) * scale
+        ctx.translate(cx, cy)
+        if (cell.rotate) ctx.rotate((cell.rotate * Math.PI) / 180)
+        const rw = cell.w * scale
+        const rh = cell.h * scale
+        const r = cellRadius * scale
+        ctx.beginPath()
+        ctx.moveTo(-rw / 2 + r, -rh / 2)
+        ctx.arcTo(rw / 2, -rh / 2, rw / 2, rh / 2, r)
+        ctx.arcTo(rw / 2, rh / 2, -rw / 2, rh / 2, r)
+        ctx.arcTo(-rw / 2, rh / 2, -rw / 2, -rh / 2, r)
+        ctx.arcTo(-rw / 2, -rh / 2, rw / 2, -rh / 2, r)
+        ctx.closePath()
+        ctx.fillStyle = '#e8e4dc'
+        ctx.fill()
+        ctx.strokeStyle = '#b8a890'
+        ctx.lineWidth = 2 * scale
+        ctx.setLineDash([6 * scale, 4 * scale])
+        ctx.stroke()
+        ctx.setLineDash([])
+        const label = cell.placeholderText || cell.caption || 'Placeholder'
+        ctx.fillStyle = '#6b6358'
+        ctx.font = `600 ${14 * scale}px system-ui, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(label, 0, 0, rw - 16 * scale)
+        ctx.restore()
+        return
+      }
       const cx = (cell.x + cell.w / 2) * scale
       const cy = (cell.y + cell.h / 2) * scale
       ctx.translate(cx, cy)
@@ -273,7 +310,9 @@ export function useCollageEngine() {
         id, name, photoCount: photos.length, updatedAt: Date.now(),
         settings: { aspect, customW, customH, layoutType, smartSize, gap, margin, cellRadius, bgColor, theme, caption, showCaption },
         cells: cells.map((c) => ({
-          photoId: c.photoId, x: c.x, y: c.y, w: c.w, h: c.h,
+          photoId: c.photoId, isPlaceholder: !!c.isPlaceholder,
+          placeholderText: c.placeholderText || '',
+          x: c.x, y: c.y, w: c.w, h: c.h,
           scale: c.scale, ox: c.ox, oy: c.oy, oxRel: c.oxRel, oyRel: c.oyRel,
           frameAspect: c.frameAspect || 'free',
           frameAspectW: c.frameAspectW, frameAspectH: c.frameAspectH,
@@ -364,7 +403,7 @@ export function useCollageEngine() {
   }
 
   const onCellPointerDown = (e, cell) => {
-    const photo = photos.find((p) => p.id === cell.photoId)
+    const photo = cell.photoId ? photos.find((p) => p.id === cell.photoId) : null
     beginCellDrag(e, cell, { panMode, setSelectedId, setCells, cropMemory, dragRef, photo, stageW, stageH, gap, margin })
   }
 
@@ -410,11 +449,25 @@ export function useCollageEngine() {
       const url = URL.createObjectURL(file)
       const img = new Image()
       img.onload = () => {
-        setPhotos((prev) => prev.map((p) => {
-          if (p.id !== selected.photoId) return p
-          if (p.url && p.url.startsWith('blob:')) URL.revokeObjectURL(p.url)
-          return { ...p, url, img, w: img.naturalWidth, h: img.naturalHeight, pixels: img.naturalWidth * img.naturalHeight, name: file.name }
-        }))
+        const newId = selected.photoId || uid()
+        if (selected.isPlaceholder || !selected.photoId) {
+          setPhotos((prev) => [...prev, {
+            id: newId, url, img,
+            w: img.naturalWidth, h: img.naturalHeight,
+            pixels: img.naturalWidth * img.naturalHeight, name: file.name,
+          }])
+          setCells((prev) => prev.map((cell) =>
+            cell.id === selected.id
+              ? { ...cell, photoId: newId, isPlaceholder: false, placeholderText: '' }
+              : cell
+          ))
+        } else {
+          setPhotos((prev) => prev.map((p) => {
+            if (p.id !== selected.photoId) return p
+            if (p.url && p.url.startsWith('blob:')) URL.revokeObjectURL(p.url)
+            return { ...p, url, img, w: img.naturalWidth, h: img.naturalHeight, pixels: img.naturalWidth * img.naturalHeight, name: file.name }
+          }))
+        }
       }
       img.src = url
     }
@@ -439,7 +492,7 @@ export function useCollageEngine() {
     panMode, setPanMode, mobileOpen, setMobileOpen,
     viewZoom, setCanvasZoom, zoomCanvasBy,
     wrapRef, fileRef, cropMemory,
-    rebuild, loadFiles, removePhoto, clearAll, updateSelected,
+    rebuild, loadFiles, removePhoto, clearAll, addPlaceholder, updateSelected,
     exportPNG, handleSaveProject, handleLoadProject, handleNewProject, handleDeleteProject,
     onCellPointerDown, onCellWheel, zoomSelected, restoreCrop, replaceSelected,
   }
