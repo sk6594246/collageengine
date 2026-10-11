@@ -18,6 +18,11 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  height: 100%;
+  overflow: hidden; /* page does not scroll — sidebar & canvas scroll separately */
+}
+
 body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   background: var(--bg);
@@ -25,7 +30,6 @@ body {
     radial-gradient(ellipse 120% 80% at 50% -20%, rgba(232,168,124,0.08), transparent),
     radial-gradient(ellipse 80% 50% at 100% 100%, rgba(120,90,60,0.06), transparent);
   color: var(--text);
-  min-height: 100vh;
 }
 
 button {
@@ -33,4 +37,10 @@ button {
   cursor: pointer;
 }
 
-#root { min-height: 100vh; display: flex; flex-direction: column; }
+#root {
+  height: 100%;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
