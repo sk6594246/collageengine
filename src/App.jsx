@@ -1,4 +1,5 @@
 import './App.css'
+import './scroll-layout.css'
 import './zoom.css'
 import './placeholder.css'
 import { useCollageEngine } from './hooks/useCollageEngine'
